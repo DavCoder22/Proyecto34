@@ -1,6 +1,6 @@
 # PoC — Integración y Calidad de Datos para Análisis Comercial
 
-> Prueba de Concepto lista para **despliegue en la nube (Zeabur)** o **ejecución local con Docker**. Integra 4 fuentes heterogéneas, aplica calidad de datos medible y presenta resultados en **Jupyter Notebook** (evidencia ETL) + **Apache Superset** (dashboard).
+> Prueba de Concepto lista para **despliegue en la nube (Northflank)** o **ejecución local con Docker**. Integra 4 fuentes heterogéneas, aplica calidad de datos medible y presenta resultados en **Jupyter Notebook** (evidencia ETL) + **Apache Superset** (dashboard).
 
 ---
 
@@ -16,7 +16,7 @@ Demostrar la integración, limpieza, validación y visualización de datos comer
 Jupyter Notebook (ETL) --> PostgreSQL (Data Warehouse - Star Schema) --> Apache Superset (Dashboard)
 ```
 
-Todo desplegable con **Docker** o directamente en **Zeabur**.
+Todo desplegable con **Docker** o directamente en **Northflank**.
 
 ---
 
@@ -38,7 +38,6 @@ PoC_Analisis_Comercial/
 ├── 06_calidad/              # profile_report.md, log_rechazos.csv
 ├── 07_presentacion/         # Guion de presentación
 ├── docker/                  # Dockerfile + docker-compose.yml
-├── zeabur/                  # Guía de despliegue en Zeabur
 ├── .env.example             # Variables de entorno
 ├── run_local.bat            # Levantar stack local
 ├── run_etl.bat              # ETL local SQLite
@@ -55,7 +54,7 @@ PoC_Analisis_Comercial/
 | Data Warehouse | PostgreSQL | Almacenamiento del modelo estrella |
 | Dashboard | Apache Superset | Gráficos interactivos para toma de decisiones |
 | Contenedores | Docker / Docker Compose | Ejecución portable en local/nube |
-| Nube | Zeabur | Despliegue accesible por URL |
+| Nube | Northflank | Despliegue accesible por URL |
 | Respaldos Locales | Python + SQLite + Power BI | Opción A funcional sin nube |
 
 ---
@@ -71,9 +70,14 @@ PoC_Analisis_Comercial/
    - Superset: `http://localhost:8088` (admin / admin)
    - PostgreSQL: `localhost:5432`
 
-### Opción B: Desplegar en Zeabur (Para entregar y que lo prueben)
+### Opción B: Desplegar en Northflank (Para entregar y que lo prueben)
 
-Seguir paso a paso: [`zeabur/deploy.md`](zeabur/deploy.md)
+1. Ir a [northflank.com](https://northflank.com) → Crear proyecto
+2. Conectar repositorio GitHub `https://github.com/DavCoder22/Proyecto34.git`
+3. Desplegar `PostgreSQL` (Addon/Service)
+4. Desplegar `Jupyter` usando `docker/Dockerfile` con variables `JUPYTER_TOKEN` y `DATABASE_URL`
+5. Desplegar `Apache Superset` conectado al mismo PostgreSQL
+6. Acceder por las URLs públicas generadas
 
 ### Opción C: Local con SQLite + Power BI (Respaldo)
 
@@ -88,7 +92,7 @@ Usar `03_dw/dw.db` con Power BI Desktop.
 
 1. **Jupyter Notebook** — Evidencia del ETL: lectura, nulos, duplicados, homologación, validación FK, reglas de negocio y carga a PostgreSQL.
 2. **Apache Superset** — Conclusión: Dashboard `Sales Analytics` con 4 KPIs y filtros interactivos.
-3. **Zeabur** — Evidenciar los 3 servicios funcionando.
+3. **Northflank** — Evidenciar los 3 servicios funcionando.
 
 ---
 

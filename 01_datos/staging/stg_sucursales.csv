@@ -1,0 +1,13 @@
+﻿cod_sucursal,nombre_sucursal,ciudad,provincia,region,fecha_apertura,estado_sucursal
+S001,Quito Centro,Quito,Pichincha,Sierra,2016-03-15,Activo
+S002,Quito Norte,Quito,Pichincha,Sierra,2018-08-01,Activo
+S003,Cumbayá,Quito,Pichincha,Sierra,2020-11-20,Activo
+S004,Guayaquil Centro,Guayaquil,Guayas,Costa,2015-01-10,Activo
+S005,Guayaquil Norte,Guayaquil,Guayas,Costa,2019-06-18,Activo
+S006,Cuenca,Cuenca,Azuay,Sierra,2017-09-05,Activo
+S007,Ambato,Ambato,Tungurahua,Sierra,2019-02-14,Activo
+S008,Manta,Manta,Manabí,Costa,2021-05-22,Activo
+S009,Loja,Loja,Loja,Sierra,2021-10-01,Activo
+S010,Santo Domingo,Santo Domingo,Santo Domingo de los Tsáchilas,Costa,2022-01-15,Activo
+S011,Riobamba,Riobamba,Chimborazo,Sierra,2022-07-10,Activo
+S012,Machala,Machala,El Oro,Costa,2023-04-03,Activo

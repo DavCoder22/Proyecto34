@@ -1,0 +1,12 @@
+-- Medidas DAX para Power BI (tabla FactVentas)
+Venta Neta = SUM(FactVentas[venta_neta])
+Venta Bruta = SUM(FactVentas[venta_bruta])
+Unidades = SUM(FactVentas[cantidad])
+Num Ventas = DISTINCTCOUNT(FactVentas[id_venta])
+Ticket Promedio = DIVIDE([Venta Neta], [Num Ventas], 0)
+Margen = SUM(FactVentas[margen])
+Margen % = DIVIDE([Margen], [Venta Neta], 0)
+Descuento Promedio % = AVERAGE(FactVentas[descuento_pct])
+
+-- KPI 3: ranking sucursal
+Ranking Sucursal = RANKX(ALL(DimSucursal[nombre_sucursal]), [Venta Neta], , DESC, Dense)

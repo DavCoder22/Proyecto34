@@ -1,0 +1,34 @@
+============================================ 
+PoC ETL - Ejecucion 21/10/2026 17:14:55.36 
+============================================ 
+Reporte generado: D:\PC(primaria)\David PC\UCE\Complexivo\PoC_Analisis_Comercial\06_calidad\profile_report.md
+(incluido en pipeline) 
+[EXTRACT] clientes: 1006 filas -> D:\PC(primaria)\David PC\UCE\Complexivo\PoC_Analisis_Comercial\01_datos\staging\stg_clientes.csv
+[EXTRACT] sucursales: 12 filas -> D:\PC(primaria)\David PC\UCE\Complexivo\PoC_Analisis_Comercial\01_datos\staging\stg_sucursales.csv
+[EXTRACT] productos: 123 filas -> D:\PC(primaria)\David PC\UCE\Complexivo\PoC_Analisis_Comercial\01_datos\staging\stg_productos.csv
+[EXTRACT] ventas: 6870 filas -> D:\PC(primaria)\David PC\UCE\Complexivo\PoC_Analisis_Comercial\01_datos\staging\stg_ventas.csv
+[CLEAN] clientes: 6 duplicados eliminados
+[CLEAN] sucursales: 0 duplicados eliminados
+[CLEAN] productos: 3 duplicados eliminados
+[CLEAN] ventas: 20 duplicados eliminados
+[VALIDATE] ventas.cod_cliente -> clientes: 12 rechazados
+[VALIDATE] ventas.cod_producto -> productos: 10 rechazados
+[VALIDATE] ventas.cod_sucursal -> sucursales: 8 rechazados
+[VALIDATE] clientes nulos: [{'columna': 'fecha_registro', 'nulos': 8, 'pct': np.float64(0.8)}]
+[VALIDATE] productos nulos: [{'columna': 'marca', 'nulos': 5, 'pct': np.float64(4.17)}]
+[VALIDATE] ventas nulos: [{'columna': 'fecha_venta', 'nulos': 20, 'pct': np.float64(0.29)}]
+[LOAD] DW creado en D:\PC(primaria)\David PC\UCE\Complexivo\PoC_Analisis_Comercial\03_dw\dw.db
+
+=== PIPELINE OK ===
+Duplicados eliminados: {'clientes': 6, 'sucursales': 0, 'productos': 3, 'ventas': 20}
+FK rechazados: [{'hija': 'ventas', 'fk': 'cod_cliente', 'padre': 'clientes', 'rechazados': 12}, {'hija': 'ventas', 'fk': 'cod_producto', 'padre': 'productos', 'rechazados': 10}, {'hija': 'ventas', 'fk': 'cod_sucursal', 'padre': 'sucursales', 'rechazados': 8}]
+Ventas fact filas: 6800
+DimCliente 1000
+DimSucursal 12
+DimProducto 120
+DimTiempo 952
+FactVentas 6800
+Vistas OK
+ 
+EJECUCION COMPLETADA 
+============================================ 

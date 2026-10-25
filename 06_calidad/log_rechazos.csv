@@ -1,0 +1,31 @@
+﻿id_venta,fecha_venta,cod_cliente,cod_producto,cod_sucursal,cantidad,precio_unitario,descuento_pct,canal_venta,metodo_pago,motivo
+V000665,2024-12-24,CX9216,P0065,S005,1,230.62,0.1,Marketplace,Transferencia,FK invalida: cod_cliente no existe en cod_cliente
+V000903,2026-07-24,CX9488,P0088,S007,2,577.14,0.0,Marketplace,Tarjeta de crédito,FK invalida: cod_cliente no existe en cod_cliente
+V001262,2025-05-19,CX9158,P0076,S003,3,585.73,0.0,Web,Transferencia,FK invalida: cod_cliente no existe en cod_cliente
+V001368,2024-11-09,CX9606,P0079,S001,1,298.7,0.05,Aplicación móvil,Tarjeta de crédito,FK invalida: cod_cliente no existe en cod_cliente
+V001493,2025-08-18,CX9318,P0034,S001,2,779.85,0.0,Marketplace,Tarjeta de crédito,FK invalida: cod_cliente no existe en cod_cliente
+V001699,2024-03-18,CX9557,P0091,S002,2,829.77,0.0,Aplicación móvil,Billetera digital,FK invalida: cod_cliente no existe en cod_cliente
+V001823,2025-06-16,CX9381,P0051,S012,1,753.48,0.1,Aplicación móvil,Efectivo,FK invalida: cod_cliente no existe en cod_cliente
+V002463,2025-12-28,CX9734,P0031,S001,1,153.59,0.0,Aplicación móvil,Efectivo,FK invalida: cod_cliente no existe en cod_cliente
+V002493,2024-08-18,CX9698,P0076,S008,4,587.5,0.0,Tienda física,Transferencia,FK invalida: cod_cliente no existe en cod_cliente
+V002884,2025-07-29,CX9326,P0038,S005,2,485.36,0.0,Web,Transferencia,FK invalida: cod_cliente no existe en cod_cliente
+V002966,2025-11-03,CX9995,P0077,S007,1,609.19,0.05,Aplicación móvil,Tarjeta de crédito,FK invalida: cod_cliente no existe en cod_cliente
+V003415,2025-01-19,CX9740,P0113,S009,2,936.46,0.0,Tienda física,Transferencia,FK invalida: cod_cliente no existe en cod_cliente
+V000810,2024-07-18,C00178,PX905,S007,2,710.56,0.1,Tienda física,Tarjeta de débito,FK invalida: cod_producto no existe en cod_producto
+V001178,2024-12-10,C00460,PX994,S012,3,540.1,0.0,Tienda física,Efectivo,FK invalida: cod_producto no existe en cod_producto
+V001482,2025-01-15,C00233,PX955,S004,1,626.68,0.05,Marketplace,Efectivo,FK invalida: cod_producto no existe en cod_producto
+V001876,2025-12-25,C00378,PX945,S010,1,465.2,0.05,Web,Transferencia,FK invalida: cod_producto no existe en cod_producto
+V002245,2025-12-18,C00133,PX953,S004,2,828.13,0.0,Aplicación móvil,Transferencia,FK invalida: cod_producto no existe en cod_producto
+V002487,2025-10-22,C00288,PX991,S012,1,124.4,0.25,Web,Efectivo,FK invalida: cod_producto no existe en cod_producto
+V002632,2025-05-04,C00370,PX969,S007,2,876.87,0.1,Tienda física,Transferencia,FK invalida: cod_producto no existe en cod_producto
+V003058,2024-03-13,C00353,PX913,S008,1,600.7,0.0,Marketplace,Billetera digital,FK invalida: cod_producto no existe en cod_producto
+V003236,2025-06-25,C00218,PX963,S012,1,811.17,0.0,Web,Tarjeta de débito,FK invalida: cod_producto no existe en cod_producto
+V003591,2025-03-13,C00153,PX909,S001,2,537.31,0.0,Aplicación móvil,Tarjeta de débito,FK invalida: cod_producto no existe en cod_producto
+V000158,2024-09-08,C00378,P0036,SX82,1,582.74,0.15,Web,Billetera digital,FK invalida: cod_sucursal no existe en cod_sucursal
+V000664,2026-07-14,C00963,P0036,SX36,3,513.7,0.1,Marketplace,Transferencia,FK invalida: cod_sucursal no existe en cod_sucursal
+V000713,2025-01-09,C00826,P0097,SX60,2,499.19,0.05,Web,Tarjeta de crédito,FK invalida: cod_sucursal no existe en cod_sucursal
+V000869,2026-03-12,C00465,P0028,SX88,1,675.56,0.0,Aplicación móvil,Transferencia,FK invalida: cod_sucursal no existe en cod_sucursal
+V002265,2025-02-14,C00271,P0020,SX93,1,336.15,0.0,Web,Transferencia,FK invalida: cod_sucursal no existe en cod_sucursal
+V002378,2026-03-16,C00372,P0073,SX59,1,718.81,0.0,Web,Billetera digital,FK invalida: cod_sucursal no existe en cod_sucursal
+V002480,2026-04-14,C00493,P0100,SX46,1,891.8,0.0,Web,Tarjeta de débito,FK invalida: cod_sucursal no existe en cod_sucursal
+V002505,2025-08-09,C00010,P0050,SX28,1,818.21,0.0,Marketplace,Billetera digital,FK invalida: cod_sucursal no existe en cod_sucursal

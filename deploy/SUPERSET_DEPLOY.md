@@ -95,7 +95,7 @@ El despliegue crea automáticamente la conexión, los datasets, los 4 gráficos 
 `Settings` → `Database Connections` → `+ Database` → `PostgreSQL`:
 
 ```text
-postgresql://bi_user:bi_pass@postgres:5432/bi_dw
+postgresql+psycopg2://bi_user:bi_pass@postgres:5432/bi_dw
 ```
 
 En Northflank usa el host/puerto/usuario que te dio el addon. Prueba la conexión y guarda.

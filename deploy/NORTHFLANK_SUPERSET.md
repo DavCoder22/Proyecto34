@@ -52,7 +52,7 @@ Sin esos archivos, el build de Northflank falla o el dashboard no se crea.
 Debe verse así:
 
 ```text
-postgresql://usuario:password@host:5432/basededatos
+postgresql+psycopg2://usuario:password@host:5432/basededatos
 ```
 
 Usa siempre el host interno del addon. No uses `localhost` ni la URL pública para la comunicación entre servicios del mismo proyecto.
@@ -100,11 +100,12 @@ Pasos:
 4. En **Connect**, copia la **conexión directa** (sin `-pooler`). Debe verse así:
 
 ```text
-postgresql://usuario:password@ep-xxxxx.us-east-2.aws.neon.tech/neondb?sslmode=require
+postgresql+psycopg2://usuario:password@ep-xxxxx.us-east-2.aws.neon.tech/neondb?sslmode=require
 ```
 
 5. No actives la conexión pooled para este caso. La conexión directa evita problemas de compatibilidad con Superset y con las migraciones del ETL.
 6. En Northflank, crea el secret group y pega esa URL como `DATABASE_URL`. No enlaces ningún addon.
+7. Usa el prefijo `postgresql+psycopg2://`. Si Neon te entrega `postgresql://`, cámbialo por `postgresql+psycopg2://`; el código también lo normaliza, pero el prefijo explícito evita el error `No module named 'psycopg'`.
 7. Ejecuta el job ETL y luego despliega Superset como se indica en los pasos siguientes.
 
 Con Neon el proyecto de Northflank queda con **1 servicio (Superset) + 1 job (ETL) + 0 addons**, dentro del Sandbox. El único costo es el consumo de Northflank, que debe quedar por debajo de los 20 USD/mes.
@@ -180,7 +181,7 @@ En los logs debes ver:
 Ventas fact filas: 6800
 ```
 
-Si el job falla, revisa que `DATABASE_URL` sea `postgresql://...` y que el addon esté healthy. Vuelve a ejecutar el job después de corregir la variable.
+Si el job falla, revisa que `DATABASE_URL` sea `postgresql+psycopg2://...` y que el addon esté healthy. Vuelve a ejecutar el job después de corregir la variable.
 
 ### Alternativa si no tienes job: cargar la base desde tu computadora
 
@@ -189,7 +190,7 @@ Si no ves la opción **Job** o no quieres crearlo, puedes ejecutar el ETL localm
 En Linux o macOS:
 
 ```bash
-export DATABASE_URL="postgresql://usuario:password@ep-xxxxx.region.aws.neon.tech/neondb?sslmode=require"
+export DATABASE_URL="postgresql+psycopg2://usuario:password@ep-xxxxx.region.aws.neon.tech/neondb?sslmode=require"
 export LOAD_POSTGRES=1
 export REQUIRE_POSTGRES_LOAD=1
 .venv/bin/python 02_etl/main.py
@@ -198,7 +199,7 @@ export REQUIRE_POSTGRES_LOAD=1
 En Windows PowerShell:
 
 ```powershell
-$env:DATABASE_URL="postgresql://usuario:password@ep-xxxxx.region.aws.neon.tech/neondb?sslmode=require"
+$env:DATABASE_URL="postgresql+psycopg2://usuario:password@ep-xxxxx.region.aws.neon.tech/neondb?sslmode=require"
 $env:LOAD_POSTGRES="1"
 $env:REQUIRE_POSTGRES_LOAD="1"
 .venv\Scripts\python.exe 02_etl/main.py
@@ -320,6 +321,7 @@ ingresos      | unidades | margen        | transacciones
 | El dashboard desaparece tras un redeploy | Metadata SQLite sin volumen persistente | Monta `/app/superset_home` o usa PostgreSQL para metadata |
 | No puedo entrar con la contraseña nueva | El usuario admin ya existía y `create-admin` no actualiza la contraseña | Usa la shell del servicio y ejecuta `superset fab reset-password --username admin --password ...`, o recrea el volumen de metadata |
 | Superset redirige a HTTPS o falla el login | Talisman o cookies seguras detrás del proxy | Mantén `SUPERSET_TALISMAN_ENABLED=false` y `SUPERSET_COOKIE_SECURE=false` |
+| `ModuleNotFoundError: No module named 'psycopg'` | SQLAlchemy tomó el driver psycopg3 al usar `postgresql://` | Usa `postgresql+psycopg2://` en `DATABASE_URL` o redepliega el código actualizado |
 | Neon rechaza la conexión por SSL | Se eliminó `sslmode=require` de la URL | Conserva `?sslmode=require` en `DATABASE_URL` |
 | Neon da error de conexión tras unos minutos inactivo | El compute se suspendió por scale to zero | Recarga el dashboard; la primera consulta reactiva Neon en segundos |
 | Quiero recrear el dashboard | El dashboard ya existe y el bootstrap lo omite | Define `SUPERSET_BOOTSTRAP_FORCE=1` y reinicia; esto elimina y recrea el dashboard |

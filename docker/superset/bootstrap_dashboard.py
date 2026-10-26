@@ -24,11 +24,22 @@ Slice = None
 DASHBOARD_SLUG = "sales-analytics"
 DASHBOARD_TITLE = "Sales Analytics"
 DATABASE_NAME = os.environ.get("SUPERSET_DW_DATABASE_NAME", "PoC DW")
-DATABASE_URL = (
+
+
+def _normalize_postgres_url(value):
+    value = value.strip()
+    if value.startswith("postgres://"):
+        return "postgresql+psycopg2://" + value[len("postgres://"):]
+    if value.startswith("postgresql://"):
+        return "postgresql+psycopg2://" + value[len("postgresql://"):]
+    return value
+
+
+DATABASE_URL = _normalize_postgres_url(
     os.environ.get("SUPERSET_DW_DATABASE_URL")
     or os.environ.get("DATABASE_URL")
     or ""
-).strip()
+)
 FORCE = os.environ.get("SUPERSET_BOOTSTRAP_FORCE", "").strip().lower() in {
     "1", "true", "yes", "on",
 }

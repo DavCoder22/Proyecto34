@@ -109,8 +109,17 @@ def _postgres_required():
     return os.environ.get("REQUIRE_POSTGRES_LOAD", "").strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _normalize_postgres_url(value):
+    value = value.strip()
+    if value.startswith("postgres://"):
+        return "postgresql+psycopg2://" + value[len("postgres://"):]
+    if value.startswith("postgresql://"):
+        return "postgresql+psycopg2://" + value[len("postgresql://"):]
+    return value
+
+
 def _load_postgres(frames):
-    database_url = os.environ.get("DATABASE_URL", "").strip()
+    database_url = _normalize_postgres_url(os.environ.get("DATABASE_URL", ""))
     if not database_url:
         if _postgres_required():
             raise RuntimeError("REQUIRE_POSTGRES_LOAD=1 pero DATABASE_URL no está definida")
@@ -118,7 +127,7 @@ def _load_postgres(frames):
     if os.environ.get("LOAD_POSTGRES", "1").strip().lower() in {"0", "false", "no", "off"}:
         print("[LOAD] Carga a PostgreSQL omitida por LOAD_POSTGRES")
         return
-    if not database_url.startswith(("postgresql://", "postgresql+psycopg2://")):
+    if not database_url.startswith(("postgresql://", "postgresql+psycopg2://", "postgresql+psycopg://")):
         message = "DATABASE_URL no es PostgreSQL; se omite la carga a PostgreSQL"
         if _postgres_required():
             raise RuntimeError(message)

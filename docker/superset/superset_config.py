@@ -12,9 +12,19 @@ if not SECRET_KEY:
 
 # Base de metadatos de Superset (dashboards, usuarios, datasets).
 # Por defecto SQLite persistente; para producción usar PostgreSQL.
-SQLALCHEMY_DATABASE_URI = os.environ.get(
-    "SUPERSET_METADATA_DATABASE_URL",
-    "sqlite:////app/superset_home/superset.db",
+def _normalize_postgres_url(value):
+    if value.startswith("postgres://"):
+        return "postgresql+psycopg2://" + value[len("postgres://"):]
+    if value.startswith("postgresql://"):
+        return "postgresql+psycopg2://" + value[len("postgresql://"):]
+    return value
+
+
+SQLALCHEMY_DATABASE_URI = _normalize_postgres_url(
+    os.environ.get(
+        "SUPERSET_METADATA_DATABASE_URL",
+        "sqlite:////app/superset_home/superset.db",
+    )
 )
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 

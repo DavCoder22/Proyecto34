@@ -4,7 +4,7 @@ import sqlite3
 
 import pandas as pd
 
-from config import DW_PATH, ROOT
+from config import DATA_STAGING, DW_PATH, ROOT
 
 POSTGRES_TABLES = {
     "DimTiempo": "dim_tiempo",
@@ -105,6 +105,15 @@ def _postgres_required():
     return os.environ.get("REQUIRE_POSTGRES_LOAD", "").strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _etl_target():
+    target = os.environ.get("ETL_TARGET", "").strip().lower()
+    if target in {"sqlite", "postgres", "both"}:
+        return target
+    if target in {"", "auto"}:
+        return "postgres" if os.environ.get("DATABASE_URL", "").strip() else "sqlite"
+    raise ValueError(f"ETL_TARGET inválido: {target}")
+
+
 POSTGRES_PSYCOPG2_SCHEME = "postgresql+psycopg2://"
 POSTGRES_SCHEME = "postgresql://"
 POSTGRES_ACCEPTED_SCHEMES = (POSTGRES_SCHEME, POSTGRES_PSYCOPG2_SCHEME, "postgresql+psycopg://")
@@ -179,6 +188,31 @@ def _write_postgres_frames(engine, frames):
         )
 
 
+def _write_evidence_tables(engine, df_dict):
+    for name in ("clientes", "sucursales", "productos", "ventas"):
+        staging_path = DATA_STAGING / f"stg_{name}.csv"
+        if not staging_path.exists():
+            continue
+        staging = pd.read_csv(staging_path, dtype=str, encoding="utf-8-sig")
+        staging.to_sql(
+            f"stg_{name}",
+            engine,
+            index=False,
+            if_exists="replace",
+            method="multi",
+            chunksize=500,
+        )
+    for name, frame in df_dict.items():
+        frame.to_sql(
+            f"clean_{name}",
+            engine,
+            index=False,
+            if_exists="replace",
+            method="multi",
+            chunksize=500,
+        )
+
+
 def _apply_postgres_views(engine):
     views_path = ROOT / "04_dashboard" / "kpi_views_postgres.sql"
     if not views_path.exists():
@@ -193,7 +227,7 @@ def _sync_postgres_sequences(engine):
             conn.exec_driver_sql(statement)
 
 
-def _load_postgres(frames):
+def _load_postgres(frames, df_dict):
     database_url = _postgres_url()
     if database_url is None:
         return
@@ -205,6 +239,7 @@ def _load_postgres(frames):
         engine = create_engine(database_url, pool_pre_ping=True)
         _reset_postgres_schema(engine)
         _write_postgres_frames(engine, frames)
+        _write_evidence_tables(engine, df_dict)
         _apply_postgres_views(engine)
         _sync_postgres_sequences(engine)
         safe_url = database_url.split("@")[-1]
@@ -220,5 +255,8 @@ def _load_postgres(frames):
 
 def load_all(df_dict, ventas_fact):
     frames, fact_full, dimt, prod = _build_frames(df_dict, ventas_fact)
-    _load_sqlite(frames, fact_full, dimt, prod)
-    _load_postgres(frames)
+    target = _etl_target()
+    if target in {"sqlite", "both"}:
+        _load_sqlite(frames, fact_full, dimt, prod)
+    if target in {"postgres", "both"}:
+        _load_postgres(frames, df_dict)

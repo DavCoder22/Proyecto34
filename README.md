@@ -138,20 +138,20 @@ No publicar `.env` ni credenciales reales.
 1. Copiar variables: `copy .env.example .env`
 2. Ejecutar: `run_local.bat` o `docker compose --env-file .env -f docker/docker-compose.yml up --build`
 3. Acceder:
-   - Jupyter: `http://localhost:8888` (token: `bi_poc`)
-   - Superset: `http://localhost:8088` (admin / admin)
+   - Jupyter: `http://localhost:8888` (token definido en `.env`)
+   - Superset: `http://localhost:8088` (credenciales definidas en `.env`)
    - PostgreSQL: `localhost:5432`
 
-Al arrancar, Jupyter ejecuta el ETL y, como `DATABASE_URL` apunta a PostgreSQL, carga el DW en las tablas `dim_*` y `fact_ventas`. Superset ya usa la imagen configurada (`docker/superset/Dockerfile`) y puede conectarse a `bi_dw`.
+En local, el servicio `jupyter` usa `ETL_TARGET=sqlite` y escribe solo `03_dw/dw.db`; el servicio `etl` usa `ETL_TARGET=postgres` y carga el PostgreSQL local para que Superset lo consuma. Así el notebook local no se mezcla con la fuente del dashboard.
 
 ### Opción B: Desplegar en Northflank (Para entregar y que lo prueben)
 
 1. Ir a [northflank.com](https://northflank.com) → Crear proyecto
 2. Conectar repositorio GitHub `https://github.com/DavCoder22/Proyecto34.git`
 3. Desplegar `PostgreSQL` (Addon/Service)
-4. Desplegar `Jupyter` usando `docker/Dockerfile` con variables `JUPYTER_TOKEN` y `DATABASE_URL`
-5. Desplegar `Apache Superset` usando `docker/superset/Dockerfile`, puerto `8088`, con `SUPERSET_SECRET_KEY`, `DATABASE_URL`, `SUPERSET_ADMIN_*` y su propia URL pública (dirección distinta a Jupyter). Al iniciar crea automáticamente el dashboard `Sales Analytics`.
-6. Acceder por las URLs públicas generadas. El ETL de Jupyter carga el DW en el PostgreSQL compartido y Superset consume esas tablas.
+4. Desplegar `Jupyter` usando `docker/Dockerfile` con `JUPYTER_TOKEN`, `ETL_TARGET=postgres` y `DATABASE_URL` apuntando a Neon.
+5. Desplegar `Apache Superset` usando `docker/superset/Dockerfile`, puerto `8088`, con `SUPERSET_SECRET_KEY`, `DATABASE_URL` (Neon), `SUPERSET_ADMIN_*` y su propia URL pública. Al iniciar crea automáticamente el dashboard `Sales Analytics`.
+6. Acceder por las URLs públicas generadas. En la nube, Jupyter y Superset comparten la misma base Neon: Jupyter sube los datos originales (`stg_*`) y transformados (`clean_*`), y Superset consume el DW (`fact_ventas` y vistas).
 
 Guía detallada para Northflank: [`deploy/NORTHFLANK_SUPERSET.md`](deploy/NORTHFLANK_SUPERSET.md). Guía general de despliegue: [`deploy/SUPERSET_DEPLOY.md`](deploy/SUPERSET_DEPLOY.md).
 
@@ -163,11 +163,12 @@ En Northflank configurar el contexto de construcción como la raíz del reposito
 
 ```text
 JUPYTER_TOKEN=<token-seguro>
-DATABASE_URL=postgresql+psycopg2://usuario:password@host:5432/bi_dw
+ETL_TARGET=postgres
+DATABASE_URL=postgresql+psycopg2://usuario:password@host:5432/bi_dw?sslmode=require
 RUN_ETL_ON_START=1
 ```
 
-Al arrancar el contenedor, si `DATABASE_URL` está definida, el ETL se ejecuta y carga el DW en PostgreSQL; luego inicia Jupyter. Después de reconstruir la imagen, abrir `02_etl/01_etl_pipeline.ipynb`. Los resultados de SQLite estarán en `03_dw/dw.db` y `06_calidad/`; las tablas de Superset estarán en PostgreSQL. Para volver a ejecutarlo manualmente desde una terminal Jupyter:
+Al arrancar el contenedor, si `ETL_TARGET=postgres` y `DATABASE_URL` están definidas, el ETL escribe en Neon los datos originales (`stg_*`), transformados (`clean_*`) y el DW; luego inicia Jupyter. En local, en cambio, `ETL_TARGET=sqlite` mantiene el notebook sobre `03_dw/dw.db`. Para volver a ejecutarlo manualmente desde una terminal Jupyter:
 
 ```bash
 python 02_etl/main.py

@@ -120,6 +120,7 @@ Ten en cuenta que Neon suspende el cómputo cuando está inactivo. La primera co
 4. Agrega estas variables:
 
 ```text
+ETL_TARGET=postgres
 LOAD_POSTGRES=1
 REQUIRE_POSTGRES_LOAD=1
 SUPERSET_SECRET_KEY=<clave-larga-y-aleatoria>
@@ -166,12 +167,15 @@ Este job carga los datos en PostgreSQL. Debe ejecutarse **antes** de crear el da
 9. Runtime environment: enlaza el secret group `poc-superset-secrets` o agrega manualmente:
 
 ```text
-DATABASE_URL=<POSTGRES_URI del addon>
+DATABASE_URL=<POSTGRES_URI del addon o Neon>
+ETL_TARGET=postgres
 LOAD_POSTGRES=1
 REQUIRE_POSTGRES_LOAD=1
 ```
 
 10. Crea el job y ejecútalo manualmente (**Run job**).
+
+El job crea en la base las tablas originales `stg_*`, las transformadas `clean_*`, el DW (`dim_*`, `fact_ventas`) y las vistas. El servicio Jupyter debe usar la misma `DATABASE_URL` con `ETL_TARGET=postgres` y `RUN_ETL_ON_START=1` para que el notebook muestre esos datos. En local no definas `ETL_TARGET=postgres`: deja `ETL_TARGET=sqlite` para que Jupyter use `03_dw/dw.db`.
 
 En los logs debes ver:
 
@@ -191,6 +195,7 @@ En Linux o macOS:
 
 ```bash
 export DATABASE_URL="postgresql+psycopg2://usuario:password@ep-xxxxx.region.aws.neon.tech/neondb?sslmode=require"
+export ETL_TARGET=postgres
 export LOAD_POSTGRES=1
 export REQUIRE_POSTGRES_LOAD=1
 .venv/bin/python 02_etl/main.py
@@ -200,6 +205,7 @@ En Windows PowerShell:
 
 ```powershell
 $env:DATABASE_URL="postgresql+psycopg2://usuario:password@ep-xxxxx.region.aws.neon.tech/neondb?sslmode=require"
+$env:ETL_TARGET="postgres"
 $env:LOAD_POSTGRES="1"
 $env:REQUIRE_POSTGRES_LOAD="1"
 .venv\Scripts\python.exe 02_etl/main.py

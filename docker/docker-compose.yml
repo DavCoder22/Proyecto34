@@ -27,10 +27,28 @@ services:
         condition: service_healthy
     env_file:
       - ../.env
+    environment:
+      ETL_TARGET: sqlite
     ports:
       - "8888:8888"
     volumes:
       - ../:/home/jovyan/work
+
+  etl:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.etl
+    container_name: bi_etl
+    env_file:
+      - ../.env
+    environment:
+      ETL_TARGET: postgres
+      LOAD_POSTGRES: "1"
+      REQUIRE_POSTGRES_LOAD: "1"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
 
   superset:
     build:
@@ -41,6 +59,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      etl:
+        condition: service_completed_successfully
     env_file:
       - ../.env
     ports:

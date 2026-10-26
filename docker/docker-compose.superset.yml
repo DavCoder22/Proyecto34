@@ -24,6 +24,7 @@ services:
     env_file:
       - ../.env
     environment:
+      ETL_TARGET: postgres
       LOAD_POSTGRES: "1"
       REQUIRE_POSTGRES_LOAD: "1"
     depends_on:

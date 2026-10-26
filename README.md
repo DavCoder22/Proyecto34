@@ -144,6 +144,31 @@ No publicar `.env` ni credenciales reales.
 5. Desplegar `Apache Superset` conectado al mismo PostgreSQL
 6. Acceder por las URLs públicas generadas
 
+#### Archivos dentro de Jupyter en la nube
+
+El `docker/Dockerfile` copia el repositorio completo dentro de `/home/jovyan/work` y ejecuta el ETL durante la construcción de la imagen. Por eso, después de cada redeploy deben estar disponibles en Jupyter `01_datos`, `02_etl`, `03_dw`, `04_dashboard` y `06_calidad`.
+
+En Northflank configurar el contexto de construcción como la raíz del repositorio, seleccionar `docker/Dockerfile` y definir:
+
+```text
+JUPYTER_TOKEN=<token-seguro>
+```
+
+Después de reconstruir la imagen, abrir `02_etl/01_etl_pipeline.ipynb`. El ETL ya habrá sido ejecutado durante el build y sus resultados estarán en `03_dw/dw.db` y `06_calidad/`. Para volver a ejecutarlo manualmente desde una terminal Jupyter:
+
+```bash
+python 02_etl/main.py
+python 04_dashboard/build_dashboard.py
+```
+
+El dashboard se puede abrir desde `04_dashboard/dashboard.html`. Si el servicio permite terminal, también se puede publicar temporalmente con:
+
+```bash
+python -m http.server 8000 --directory 04_dashboard
+```
+
+El puerto `8000` debe estar expuesto en Northflank para acceder a ese servidor. Jupyter continuará disponible en el puerto `8888`.
+
 ### Opción C: Local con SQLite + Power BI (Respaldo)
 
 ```bash

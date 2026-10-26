@@ -12,9 +12,9 @@ def to_utf8_str(df):
 def drop_dupes(df, pk=None, keep="first"):
     before = len(df)
     if pk and pk in df.columns:
-        df = df.drop_duplicates(subset=[pk], keep=keep)
+        df = df.drop_duplicates(subset=[pk], keep=keep).copy()
     else:
-        df = df.drop_duplicates(keep=keep)
+        df = df.drop_duplicates(keep=keep).copy()
     return df, before - len(df)
 
 def parse_dates(df, cols):

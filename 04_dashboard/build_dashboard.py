@@ -27,7 +27,7 @@ def main():
     html = f'''<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Sales Analytics | PoC ETL</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" integrity="sha384-NrKB+u6Ts6AtkIhwPixiKTzgSKNblyhlk0Sohlgar9UHUBzai/sgnNNWWd291xqt" crossorigin="anonymous"></script>
 <style>
 body{{margin:0;background:#f4f1ea;color:#172121;font:16px system-ui,sans-serif}}main{{max-width:1200px;margin:auto;padding:32px}}
 h1{{font:700 42px Georgia,serif;margin:0 0 8px}}.sub{{color:#68716d;margin:0 0 28px}}.cards,.charts{{display:grid;gap:16px}}.cards{{grid-template-columns:repeat(4,1fr)}}.charts{{grid-template-columns:repeat(2,1fr);margin-top:16px}}

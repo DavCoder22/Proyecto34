@@ -23,20 +23,25 @@ PK = {
     "ventas": "id_venta",
 }
 
+# Valores canonicos reutilizados en la homologacion
+CATEGORIA_TECNOLOGIA = "Tecnología"
+SEGMENTO_SIN_DEFINIR = "Sin segmento"
+VALOR_NO_ESPECIFICADO = "No especificado"
+
 # Columnas de texto a homologar (variantes -> canonico)
 HOMOLOGACION = {
     "categoria": {
-        "TECNOLOGÍA": "Tecnología", "TECNOLOGIA": "Tecnología",
-        "tecnología": "Tecnología", "tecnologia": "Tecnología",
+        "TECNOLOGÍA": CATEGORIA_TECNOLOGIA, "TECNOLOGIA": CATEGORIA_TECNOLOGIA,
+        "tecnología": CATEGORIA_TECNOLOGIA, "tecnologia": CATEGORIA_TECNOLOGIA,
     },
     "segmento": {
-        "": "Sin segmento", "nan": "Sin segmento", "None": "Sin segmento",
+        "": SEGMENTO_SIN_DEFINIR, "nan": SEGMENTO_SIN_DEFINIR, "None": SEGMENTO_SIN_DEFINIR,
     },
     "canal_venta": {
-        "": "No especificado", "nan": "No especificado",
+        "": VALOR_NO_ESPECIFICADO, "nan": VALOR_NO_ESPECIFICADO,
     },
     "metodo_pago": {
-        "": "No especificado", "nan": "No especificado",
+        "": VALOR_NO_ESPECIFICADO, "nan": VALOR_NO_ESPECIFICADO,
     },
 }
 

@@ -12,7 +12,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 COPY requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+RUN pip install --no-cache-dir --only-binary=:all: -r /tmp/requirements.txt
 
 COPY 01_datos /app/01_datos
 COPY 02_etl /app/02_etl
@@ -20,6 +20,10 @@ COPY 03_dw /app/03_dw
 COPY 04_dashboard /app/04_dashboard
 COPY 06_calidad /app/06_calidad
 
-RUN mkdir -p /app/03_dw /app/06_calidad
+RUN useradd --create-home --uid 10001 appuser \
+    && mkdir -p /app/03_dw /app/06_calidad \
+    && chown -R appuser:appuser /app
+
+USER appuser
 
 CMD ["python", "02_etl/main.py"]

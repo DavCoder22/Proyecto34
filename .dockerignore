@@ -4,5 +4,9 @@
 __pycache__
 *.pyc
 .env
+.env.*
+*.pem
+*.key
+deploy
 .ipynb_checkpoints
-docker-compose.override.yml
+**/docker-compose*.yml

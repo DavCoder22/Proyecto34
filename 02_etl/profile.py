@@ -6,10 +6,11 @@ sys.path.insert(0, str(Path(__file__).parent))
 from config import SOURCES, DATA_RAW, LOG_PATH, PK
 
 def profile_df(name, df):
-    lines = []
-    lines.append(f"## {name} — {len(df)} filas x {len(df.columns)} cols")
-    lines.append(f"- PK: {PK.get(name)} (unicos: {df[PK[name]].nunique() if PK.get(name) in df.columns else 'n/a'})")
-    lines.append("- Nulos por columna:")
+    lines = [
+        f"## {name} — {len(df)} filas x {len(df.columns)} cols",
+        f"- PK: {PK.get(name)} (unicos: {df[PK[name]].nunique() if PK.get(name) in df.columns else 'n/a'})",
+        "- Nulos por columna:",
+    ]
     for c in df.columns:
         n = df[c].isna().sum() if df[c].dtype != object else df[c].replace({"": pd.NA, "nan": pd.NA}).isna().sum()
         lines.append(f"  - {c}: {int(n)} ({round(n/len(df)*100,2)}%)")

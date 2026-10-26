@@ -9,7 +9,7 @@ import time
 import uuid
 
 from flask import g
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect
 
 from superset.app import create_app
 
@@ -44,20 +44,21 @@ FORCE = os.environ.get("SUPERSET_BOOTSTRAP_FORCE", "").strip().lower() in {
     "1", "true", "yes", "on",
 }
 ADMIN_USERNAME = os.environ.get("SUPERSET_ADMIN_USER", "admin")
+SUM_VENTA_NETA = "SUM(venta_neta)"
 
 DATASETS = {
     "v_ventas_mes": {
         "main_dttm_col": "fecha",
-        "metrics": [("sum_venta_neta", "SUM(venta_neta)")],
+        "metrics": [("sum_venta_neta", SUM_VENTA_NETA)],
     },
     "v_ventas_categoria": {
-        "metrics": [("sum_venta_neta", "SUM(venta_neta)")],
+        "metrics": [("sum_venta_neta", SUM_VENTA_NETA)],
     },
     "v_ventas_sucursal": {
-        "metrics": [("sum_venta_neta", "SUM(venta_neta)")],
+        "metrics": [("sum_venta_neta", SUM_VENTA_NETA)],
     },
     "v_ventas_segmento": {
-        "metrics": [("sum_venta_neta", "SUM(venta_neta)")],
+        "metrics": [("sum_venta_neta", SUM_VENTA_NETA)],
     },
 }
 
@@ -93,11 +94,14 @@ def _wait_for_views(database, timeout=180):
     while time.time() < deadline:
         try:
             with database.get_sqla_engine_with_context() as engine:
-                schema = inspect(engine).default_schema_name or "public"
-                with engine.connect() as connection:
-                    for view in DATASETS:
-                        connection.execute(text(f"SELECT 1 FROM {view} LIMIT 1"))
-                return schema
+                inspector = inspect(engine)
+                schema = inspector.default_schema_name or "public"
+                names = set(inspector.get_view_names(schema=schema))
+                names.update(inspector.get_table_names(schema=schema))
+                missing = sorted(set(DATASETS) - names)
+                if not missing:
+                    return schema
+                raise RuntimeError(f"Vistas pendientes: {', '.join(missing)}")
         except Exception as exc:  # pragma: no cover - depende del entorno
             last_error = exc
             print(f"[bootstrap] Esperando vistas KPI en PostgreSQL: {exc}")

@@ -2,7 +2,7 @@ FROM apache/superset:3.1.1
 
 USER root
 
-RUN pip install --no-cache-dir "psycopg2-binary>=2.9,<3"
+RUN pip install --no-cache-dir --only-binary=:all: "psycopg2-binary==2.9.13"
 
 COPY docker/superset/superset_config.py /app/pythonpath/superset_config.py
 COPY docker/superset/bootstrap_dashboard.py /app/bootstrap_dashboard.py

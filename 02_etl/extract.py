@@ -12,7 +12,7 @@ def detect_encoding(path):
     except ImportError:
         return "utf-8"
 
-def extract_one(name, spec):
+def extract_one(spec):
     path = DATA_RAW / spec["file"]
     if not path.exists():
         # fallback: buscar en carpeta datos original
@@ -32,7 +32,7 @@ def run():
     DATA_STAGING.mkdir(parents=True, exist_ok=True)
     report = []
     for name, spec in SOURCES.items():
-        df = extract_one(name, spec)
+        df = extract_one(spec)
         out = DATA_STAGING / f"stg_{name}.csv"
         df.to_csv(out, index=False, encoding="utf-8-sig")
         report.append({"fuente": name, "filas": len(df), "cols": list(df.columns)})

@@ -5,7 +5,7 @@ import pandas as pd
 from config import DATA_RAW, LOG_PATH, PK, SOURCES
 
 
-def _read_source(name, spec):
+def _read_source(spec):
     path = DATA_RAW / spec["file"]
     if spec["file"].endswith((".xlsx", ".xls")):
         return pd.read_excel(path, sheet_name=spec.get("sheet", 0), dtype=str)
@@ -34,7 +34,7 @@ def _markdown_table(df):
 
 
 def generate_comparison(clean_dict, ventas_fact):
-    raw = {name: _read_source(name, spec) for name, spec in SOURCES.items()}
+    raw = {name: _read_source(spec) for name, spec in SOURCES.items()}
     rows = []
     for name in SOURCES:
         before = raw[name]
@@ -69,8 +69,8 @@ def generate_comparison(clean_dict, ventas_fact):
         "## Resultado por entidad", "",
         _markdown_table(summary), "",
         "## Controles de validez e integridad", "",
-        f"| Regla | Antes | Despues | Tratamiento |",
-        f"|---|---:|---:|---|",
+        "| Regla | Antes | Despues | Tratamiento |",
+        "|---|---:|---:|---|",
         f"| Fechas de venta invalidas o nulas | {invalid_dates} | 0 | Se excluyen antes de construir la dimension tiempo |",
         f"| Filas con FK invalida | {fk_before} | {fk_after} | Se registran en `log_rechazos.csv` y no pasan a hechos |",
         f"| Filas con rangos numericos invalidos | {invalid_ranges} | 0 | Se validan cantidad, precio y descuento |",

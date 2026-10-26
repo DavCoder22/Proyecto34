@@ -35,10 +35,6 @@ def build_dim_tiempo(ventas):
     return d[["id_tiempo", "fecha", "anio", "mes", "mes_nombre", "trimestre", "semana", "dia_semana"]]
 
 
-def _split_sql(sql):
-    return [stmt.strip() for stmt in sql.split(";") if stmt.strip()]
-
-
 def _build_frames(df_dict, ventas_fact):
     clientes = df_dict["clientes"].copy()
     clientes["id_cliente"] = range(1, len(clientes) + 1)
@@ -109,80 +105,108 @@ def _postgres_required():
     return os.environ.get("REQUIRE_POSTGRES_LOAD", "").strip().lower() in {"1", "true", "yes", "on"}
 
 
+POSTGRES_PSYCOPG2_SCHEME = "postgresql+psycopg2://"
+POSTGRES_SCHEME = "postgresql://"
+POSTGRES_ACCEPTED_SCHEMES = (POSTGRES_SCHEME, POSTGRES_PSYCOPG2_SCHEME, "postgresql+psycopg://")
+POSTGRES_SEQUENCE_SYNC_SQL = (
+    "SELECT setval(pg_get_serial_sequence('dim_cliente', 'id_cliente'), "
+    "COALESCE((SELECT MAX(id_cliente) FROM dim_cliente), 1))",
+    "SELECT setval(pg_get_serial_sequence('dim_producto', 'id_producto'), "
+    "COALESCE((SELECT MAX(id_producto) FROM dim_producto), 1))",
+    "SELECT setval(pg_get_serial_sequence('dim_sucursal', 'id_sucursal'), "
+    "COALESCE((SELECT MAX(id_sucursal) FROM dim_sucursal), 1))",
+    "SELECT setval(pg_get_serial_sequence('fact_ventas', 'id_venta_pk'), "
+    "COALESCE((SELECT MAX(id_venta_pk) FROM fact_ventas), 1))",
+)
+
+
 def _normalize_postgres_url(value):
     value = value.strip()
-    if value.startswith("postgres://"):
-        return "postgresql+psycopg2://" + value[len("postgres://"):]
-    if value.startswith("postgresql://"):
-        return "postgresql+psycopg2://" + value[len("postgresql://"):]
+    for scheme in ("postgres://", POSTGRES_SCHEME):
+        if value.startswith(scheme):
+            return POSTGRES_PSYCOPG2_SCHEME + value[len(scheme):]
     return value
 
 
-def _load_postgres(frames):
+def _postgres_url():
     database_url = _normalize_postgres_url(os.environ.get("DATABASE_URL", ""))
     if not database_url:
         if _postgres_required():
             raise RuntimeError("REQUIRE_POSTGRES_LOAD=1 pero DATABASE_URL no está definida")
-        return
+        return None
     if os.environ.get("LOAD_POSTGRES", "1").strip().lower() in {"0", "false", "no", "off"}:
         print("[LOAD] Carga a PostgreSQL omitida por LOAD_POSTGRES")
-        return
-    if not database_url.startswith(("postgresql://", "postgresql+psycopg2://", "postgresql+psycopg://")):
+        return None
+    if not database_url.startswith(POSTGRES_ACCEPTED_SCHEMES):
         message = "DATABASE_URL no es PostgreSQL; se omite la carga a PostgreSQL"
         if _postgres_required():
             raise RuntimeError(message)
         print(f"[LOAD][WARN] {message}")
-        return
+        return None
+    return database_url
 
+
+def _create_engine_factory():
     try:
-        from sqlalchemy import create_engine, text
+        from sqlalchemy import create_engine
     except ImportError as exc:
         if _postgres_required():
             raise
         print(f"[LOAD][WARN] SQLAlchemy no disponible: {exc}")
-        return
+        return None
+    return create_engine
 
+
+def _reset_postgres_schema(engine):
+    schema_sql = (ROOT / "03_dw" / "schema.sql").read_text(encoding="utf-8")
+    with engine.begin() as conn:
+        conn.exec_driver_sql(schema_sql)
+        conn.exec_driver_sql(
+            "TRUNCATE TABLE fact_ventas, dim_tiempo, dim_cliente, dim_producto, dim_sucursal "
+            "RESTART IDENTITY CASCADE"
+        )
+
+
+def _write_postgres_frames(engine, frames):
+    for name in ("DimTiempo", "DimCliente", "DimProducto", "DimSucursal", "FactVentas"):
+        frames[name].to_sql(
+            POSTGRES_TABLES[name],
+            engine,
+            index=False,
+            if_exists="append",
+            method="multi",
+            chunksize=500,
+        )
+
+
+def _apply_postgres_views(engine):
+    views_path = ROOT / "04_dashboard" / "kpi_views_postgres.sql"
+    if not views_path.exists():
+        return
+    with engine.begin() as conn:
+        conn.exec_driver_sql(views_path.read_text(encoding="utf-8"))
+
+
+def _sync_postgres_sequences(engine):
+    with engine.begin() as conn:
+        for statement in POSTGRES_SEQUENCE_SYNC_SQL:
+            conn.exec_driver_sql(statement)
+
+
+def _load_postgres(frames):
+    database_url = _postgres_url()
+    if database_url is None:
+        return
+    create_engine = _create_engine_factory()
+    if create_engine is None:
+        return
     engine = None
     try:
         engine = create_engine(database_url, pool_pre_ping=True)
-        schema_sql = (ROOT / "03_dw" / "schema.sql").read_text(encoding="utf-8")
-
-        with engine.begin() as conn:
-            for statement in _split_sql(schema_sql):
-                conn.execute(text(statement))
-            conn.execute(text(
-                "TRUNCATE TABLE fact_ventas, dim_tiempo, dim_cliente, dim_producto, dim_sucursal "
-                "RESTART IDENTITY CASCADE"
-            ))
-
-        for name in ("DimTiempo", "DimCliente", "DimProducto", "DimSucursal", "FactVentas"):
-            frames[name].to_sql(
-                POSTGRES_TABLES[name],
-                engine,
-                index=False,
-                if_exists="append",
-                method="multi",
-                chunksize=500,
-            )
-
-        views_path = ROOT / "04_dashboard" / "kpi_views_postgres.sql"
-        if views_path.exists():
-            with engine.begin() as conn:
-                for statement in _split_sql(views_path.read_text(encoding="utf-8")):
-                    conn.execute(text(statement))
-
-        with engine.begin() as conn:
-            for table, column in (
-                ("dim_cliente", "id_cliente"),
-                ("dim_producto", "id_producto"),
-                ("dim_sucursal", "id_sucursal"),
-                ("fact_ventas", "id_venta_pk"),
-            ):
-                conn.execute(text(
-                    f"SELECT setval(pg_get_serial_sequence('{table}', '{column}'), "
-                    f"COALESCE((SELECT MAX({column}) FROM {table}), 1))"
-                ))
-
+        _reset_postgres_schema(engine)
+        _write_postgres_frames(engine, frames)
+        _apply_postgres_views(engine)
+        _sync_postgres_sequences(engine)
         safe_url = database_url.split("@")[-1]
         print(f"[LOAD] DW PostgreSQL actualizado en {safe_url}")
     except Exception as exc:

@@ -25,6 +25,7 @@ if %errorlevel% neq 0 ( echo ERROR verificacion & pause & exit /b %errorlevel% )
 
 echo [5/5] Aplicando vistas KPI...
 python -c "import sqlite3; c=sqlite3.connect('03_dw/dw.db'); c.executescript(open('04_dashboard/kpi_views.sql').read()); c.commit(); print('Vistas OK')" >> "%RUNLOG%" 2>&1
+python 04_dashboard\build_dashboard.py >> "%RUNLOG%" 2>&1
 
 echo. >> "%RUNLOG%"
 echo EJECUCION COMPLETADA >> "%RUNLOG%"
@@ -36,6 +37,8 @@ echo Log: %RUNLOG%
 echo DW: 03_dw\dw.db
 echo Reporte profiling: 06_calidad\profile_report.md
 echo Log rechazos: 06_calidad\log_rechazos.csv
+echo Comparacion calidad: 06_calidad\quality_comparison.md
+echo Reglas: 06_calidad\reglas_transformacion.md
 echo.
 type "%RUNLOG%" | findstr /i "OK\|filas\|rechazados\|Ventas fact\|Vistas"
 pause

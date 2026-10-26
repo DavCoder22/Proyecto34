@@ -1,6 +1,10 @@
 # Dashboard en Apache Superset
 
-## 1. Conectar a PostgreSQL
+## 1. Conectar al DW de la PoC
+
+Para una demostración local, conectar `03_dw/dw.db` mediante un conector SQLite/SQLAlchemy. En un despliegue PostgreSQL, usar la misma estructura dimensional después de cargar las tablas.
+
+## 2. Conectar a PostgreSQL (opcional)
 
 1. Abrir Apache Superset → `Data` → `Databases` → `+ Database`
 2. Seleccionar `PostgreSQL`
@@ -12,7 +16,7 @@
 
 ---
 
-## 2. Crear Datasets
+## 3. Crear Datasets
 
 Ir a `Data` → `Datasets` → `+ Dataset` y crear para:
 
@@ -26,7 +30,7 @@ Ir a `Data` → `Datasets` → `+ Dataset` y crear para:
 
 ---
 
-## 3. Crear los 4 Gráficos (KPIs)
+## 4. Crear los 4 Gráficos (KPIs)
 
 ### KPI 1: Evolución de Ventas (Serie Temporal)
 - **Tipo:** Line Chart / Time-series Line
@@ -47,7 +51,7 @@ Ir a `Data` → `Datasets` → `+ Dataset` y crear para:
 - **Tipo:** Bar Chart
 - **Dataset:** `fact_ventas` + `dim_sucursal`
 - **Eje X:** `dim_sucursal.nombre_sucursal`
-- **Métricas:** `SUM(fact_ventas.venta_neta)`, `AVG(fact_ventas.venta_neta)` (ticket promedio)
+- **Métricas:** `SUM(fact_ventas.venta_neta)`, `AVG(ticket por id_venta)` (ticket promedio)
 - **Título:** `Desempeño por Sucursal`
 
 ### KPI 4: Ventas por Segmento de Cliente
@@ -59,7 +63,7 @@ Ir a `Data` → `Datasets` → `+ Dataset` y crear para:
 
 ---
 
-## 4. Crear Dashboard
+## 5. Crear Dashboard
 
 1. Ir a `Dashboards` → `+ Dashboard`
 2. Nombre: `Sales Analytics`

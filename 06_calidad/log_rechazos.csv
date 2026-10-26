@@ -29,3 +29,23 @@ V002265,2025-02-14,C00271,P0020,SX93,1,336.15,0.0,Web,Transferencia,FK invalida:
 V002378,2026-03-16,C00372,P0073,SX59,1,718.81,0.0,Web,Billetera digital,FK invalida: cod_sucursal no existe en cod_sucursal
 V002480,2026-04-14,C00493,P0100,SX46,1,891.8,0.0,Web,Tarjeta de débito,FK invalida: cod_sucursal no existe en cod_sucursal
 V002505,2025-08-09,C00010,P0050,SX28,1,818.21,0.0,Marketplace,Billetera digital,FK invalida: cod_sucursal no existe en cod_sucursal
+V000074,,C00109,P0087,S006,2,408.89,0.05,Tienda física,Billetera digital,Regla de validez: fecha o valor numerico invalido
+V000097,,C00528,P0015,S007,2,973.38,0.0,Web,Tarjeta de débito,Regla de validez: fecha o valor numerico invalido
+V000163,,C00677,P0120,S008,1,969.0,0.0,Aplicación móvil,Billetera digital,Regla de validez: fecha o valor numerico invalido
+V000329,,C00220,P0111,S010,1,136.4,0.05,Marketplace,Efectivo,Regla de validez: fecha o valor numerico invalido
+V000438,,C00861,P0076,S012,1,759.02,0.0,Web,Billetera digital,Regla de validez: fecha o valor numerico invalido
+V000723,,C00614,P0020,S004,2,298.41,0.0,Tienda física,Tarjeta de crédito,Regla de validez: fecha o valor numerico invalido
+V000770,,C00092,P0089,S002,1,627.58,0.2,Web,Efectivo,Regla de validez: fecha o valor numerico invalido
+V001156,,C00648,P0075,S008,1,107.36,0.0,Tienda física,Efectivo,Regla de validez: fecha o valor numerico invalido
+V001214,,C00733,P0028,S010,1,621.99,0.25,Aplicación móvil,Efectivo,Regla de validez: fecha o valor numerico invalido
+V001231,,C00057,P0052,S006,2,115.28,0.05,Tienda física,Billetera digital,Regla de validez: fecha o valor numerico invalido
+V001418,,C00020,P0067,S005,2,816.34,0.1,Web,Billetera digital,Regla de validez: fecha o valor numerico invalido
+V001441,,C00296,P0077,S007,2,454.03,0.0,Web,Tarjeta de débito,Regla de validez: fecha o valor numerico invalido
+V001658,,C00606,P0028,S003,1,535.87,0.1,Marketplace,Tarjeta de débito,Regla de validez: fecha o valor numerico invalido
+V001859,,C00809,P0034,S009,1,776.06,0.15,Tienda física,Tarjeta de débito,Regla de validez: fecha o valor numerico invalido
+V002673,,C00177,P0060,S010,4,734.97,0.0,Aplicación móvil,Billetera digital,Regla de validez: fecha o valor numerico invalido
+V003093,,C00928,P0105,S007,2,106.37,0.0,Tienda física,Efectivo,Regla de validez: fecha o valor numerico invalido
+V003115,,C00961,P0105,S006,2,108.1,0.2,Marketplace,Efectivo,Regla de validez: fecha o valor numerico invalido
+V003261,,C00090,P0063,S001,4,26.43,0.0,Marketplace,Efectivo,Regla de validez: fecha o valor numerico invalido
+V003273,,C00528,P0014,S009,1,412.38,0.0,Web,Billetera digital,Regla de validez: fecha o valor numerico invalido
+V003333,,C00228,P0084,S010,1,916.99,0.0,Aplicación móvil,Transferencia,Regla de validez: fecha o valor numerico invalido

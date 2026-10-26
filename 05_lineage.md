@@ -15,3 +15,14 @@ clientes.csv -> stg_clientes -> clean (segmento homologado) -> DimCliente -> Fac
 ## Cuadre de exactitud
 Total venta_neta dashboard = SUM(FactVentas.venta_neta) = 7,452,222.71
 Control vs fuente: aplicar las mismas reglas (venta_neta = cantidad*precio*(1-descuento)) sobre stg_ventas y comparar totales.
+
+## Indicadores consolidados
+
+| Indicador | Expresión sobre `FactVentas` | Resultado ejecutado |
+|---|---|---:|
+| Ingresos por ventas | `SUM(venta_neta)` | 7,452,222.71 |
+| Unidades vendidas | `SUM(cantidad)` | 13,817 |
+| Margen bruto | `SUM(margen)` | 1,966,780.12 |
+| Número de transacciones | `COUNT(DISTINCT id_venta)` | 3,587 |
+
+El ticket promedio se calcula por transacción: primero se suman las líneas de cada `id_venta` y después se obtiene el promedio. Así no se sesga el resultado por ventas con más productos.

@@ -6,10 +6,12 @@ sys.path.insert(0, str(Path(__file__).parent))
 from extract import run as extract_run, extract_one
 from clean import clean_entity
 from homologate import run_all as homologate_all
-from validate import validate_all, remove_rejected
+from validate import validate_all, remove_rejected, append_rejections
 from transform import add_business_rules
 from load import load_all
 from config import SOURCES, DATA_STAGING, DATA_RAW
+from profile import main as profile_main
+from quality_report import generate_comparison
 import pandas as pd
 import shutil
 
@@ -22,17 +24,15 @@ def main():
         if src.exists() and not dst.exists():
             shutil.copy2(src, dst)
 
-    # 1. extract
+    # 1. profile the untouched sources, then extract to staging
+    profile_main()
     extract_run()
 
     # 2. read staging
     df_dict = {}
     for name, spec in SOURCES.items():
         p = DATA_STAGING / f"stg_{name}.csv"
-        if spec["file"].endswith((".xlsx",".xls")):
-            df_dict[name] = pd.read_excel(DATA_RAW / spec["file"], sheet_name=spec.get("sheet",0))
-        else:
-            df_dict[name] = pd.read_csv(p, dtype=str, encoding="utf-8-sig")
+        df_dict[name] = pd.read_csv(p, dtype=str, encoding="utf-8-sig")
 
     # 3. clean
     dup_report = {}
@@ -48,9 +48,18 @@ def main():
     # 5. validate + remove rejected
     fk_report = validate_all(df_dict)
     df_dict = remove_rejected(df_dict)
-    # eliminar filas con fecha nula (invalidas para analisis temporal)
+    # Registrar y excluir filas que no pueden formar parte de un hecho analitico.
     if "ventas" in df_dict:
-        df_dict["ventas"] = df_dict["ventas"].dropna(subset=["fecha_venta"]).reset_index(drop=True)
+        v = df_dict["ventas"]
+        invalid = v["fecha_venta"].isna()
+        for col in ["cantidad", "precio_unitario", "descuento_pct"]:
+            invalid |= v[col].isna()
+        invalid |= (v["cantidad"] <= 0) | (v["precio_unitario"] < 0)
+        invalid |= (v["descuento_pct"] < 0) | (v["descuento_pct"] > 1)
+        rejected = v[invalid].copy()
+        rejected["motivo"] = "Regla de validez: fecha o valor numerico invalido"
+        append_rejections(rejected)
+        df_dict["ventas"] = v[~invalid].reset_index(drop=True)
 
     # 6. transform (business rules)
     ventas_fact = add_business_rules(df_dict["ventas"], df_dict["productos"])
@@ -62,6 +71,7 @@ def main():
     for name, df in df_dict.items():
         df.to_csv(DATA_STAGING / f"clean_{name}.csv", index=False, encoding="utf-8-sig")
     ventas_fact.to_csv(DATA_STAGING / "fact_ventas.csv", index=False, encoding="utf-8-sig")
+    generate_comparison(df_dict, ventas_fact)
 
     print("\n=== PIPELINE OK ===")
     print("Duplicados eliminados:", dup_report)

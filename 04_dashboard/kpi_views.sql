@@ -18,18 +18,24 @@ GROUP BY p.categoria;
 -- KPI 3: Desempeno por sucursal
 CREATE VIEW IF NOT EXISTS v_ventas_sucursal AS
 SELECT s.id_sucursal, s.nombre_sucursal, s.ciudad, s.provincia, s.region,
-       SUM(f.venta_neta) AS venta_neta,
-       COUNT(DISTINCT f.id_venta) AS num_ventas,
-       AVG(f.venta_neta) AS ticket_promedio
-FROM FactVentas f JOIN DimSucursal s ON f.id_sucursal=s.id_sucursal
+       SUM(x.venta_neta) AS venta_neta,
+       COUNT(*) AS num_ventas,
+       AVG(x.ticket) AS ticket_promedio
+FROM (SELECT id_sucursal, id_venta, SUM(venta_neta) AS venta_neta,
+             SUM(venta_neta) AS ticket
+      FROM FactVentas GROUP BY id_sucursal, id_venta) x
+JOIN DimSucursal s ON x.id_sucursal=s.id_sucursal
 GROUP BY s.id_sucursal, s.nombre_sucursal, s.ciudad, s.provincia, s.region;
 
 -- KPI 4: Ventas por segmento de cliente
 CREATE VIEW IF NOT EXISTS v_ventas_segmento AS
-SELECT c.segmento, SUM(f.venta_neta) AS venta_neta,
-       COUNT(DISTINCT f.id_venta) AS num_ventas,
-       AVG(f.venta_neta) AS ticket_promedio
-FROM FactVentas f JOIN DimCliente c ON f.id_cliente=c.id_cliente
+SELECT c.segmento, SUM(x.venta_neta) AS venta_neta,
+       COUNT(*) AS num_ventas,
+       AVG(x.ticket) AS ticket_promedio
+FROM (SELECT id_cliente, id_venta, SUM(venta_neta) AS venta_neta,
+             SUM(venta_neta) AS ticket
+      FROM FactVentas GROUP BY id_cliente, id_venta) x
+JOIN DimCliente c ON x.id_cliente=c.id_cliente
 GROUP BY c.segmento;
 
 -- Filtro auxiliar: canales y metodos de pago

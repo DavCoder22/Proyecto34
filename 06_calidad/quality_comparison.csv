@@ -1,0 +1,5 @@
+﻿Entidad,Filas antes,Filas despues,Diferencia,Nulos antes,Nulos despues,Duplicados exactos antes,Duplicados exactos despues,Claves unicas antes,Claves unicas despues
+clientes,1006,1000,6,10,8,6,0,1000,1000
+sucursales,12,12,0,0,0,0,0,12,12
+productos,123,120,3,5,5,3,0,120,120
+ventas,6870,6800,70,27,0,20,0,3600,3587

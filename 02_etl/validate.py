@@ -40,6 +40,17 @@ def validate_all(df_dict):
             print(f"[VALIDATE] {name} nulos: {issues}")
     return fk_report
 
+
+def append_rejections(rejected):
+    """Agrega rechazos no-FK al log sin perder los registrados previamente."""
+    if rejected.empty:
+        return
+    path = LOG_PATH / "log_rechazos.csv"
+    if path.exists():
+        previous = pd.read_csv(path, encoding="utf-8-sig")
+        rejected = pd.concat([previous, rejected], ignore_index=True, sort=False)
+    rejected.to_csv(path, index=False, encoding="utf-8-sig")
+
 def remove_rejected(df_dict):
     """Elimina de ventas las filas con FK invalida."""
     if "ventas" not in df_dict:

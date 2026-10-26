@@ -8,6 +8,7 @@ def add_business_rules(ventas, productos):
     # costo unitario desde productos
     costos = productos[["cod_producto", "costo_unitario"]].drop_duplicates("cod_producto")
     v = v.merge(costos, on="cod_producto", how="left")
-    v["costo_total"] = v["cantidad"] * v["costo_unitario"].fillna(0)
+    # Un costo desconocido no equivale a costo cero: conserva margen desconocido.
+    v["costo_total"] = v["cantidad"] * v["costo_unitario"]
     v["margen"] = v["venta_neta"] - v["costo_total"]
     return v

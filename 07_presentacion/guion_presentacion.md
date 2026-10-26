@@ -39,7 +39,7 @@ Mostrar cómo la integración y calidad de los datos permite **decisiones comerc
 Mostrar diagrama de arquitectura (5 capas).
 
 ### 3. Proceso ETL y calidad de datos (5 min)
-> "No solo movimos datos: los limpiamos. Eliminamos 29 duplicados, homologamos 6 variantes de categoría, rechazamos 30 registros con claves inválidas y documentamos todo en un log de rechazos."
+> "No solo movimos datos: los limpiamos. Eliminamos 29 duplicados exactos en las fuentes, rechazamos 30 registros con claves inválidas y 20 líneas sin fecha válida. La comparación antes/después y el log permiten justificar cada cambio."
 
 Mostrar `profile_report.md` y `log_rechazos.csv`.
 
@@ -58,12 +58,12 @@ Mostrar `profile_report.md` y `log_rechazos.csv`.
 > "¿Qué sucursales cumplen meta? Ranking + ticket promedio para coaching comercial."
 
 **KPI 4 — Ventas por segmento**
-> "¿Qué segmento de cliente es más rentable? Contribución + ticket promedio para campañas."
+> "¿Qué segmento de cliente aporta más ingresos y cuál es su ticket promedio? Esta evidencia permite orientar campañas; la rentabilidad se revisa con el margen bruto."
 
 Demostrar filtros: Fecha · Sucursal · Categoría · Segmento.
 
 ### 6. Validación y limitaciones (2 min)
-> "Validamos cuadre: el total del dashboard coincide con la fuente. Limitaciones: PoC con datos de 6 meses, sin carga incremental ni gobierno de datos aún."
+> "Validamos cuadre: el total del dashboard coincide con FactVentas, con 7.452.222,71 de ingresos netos, 13.817 unidades, 1.966.780,12 de margen y 3.587 transacciones. La PoC cubre 32 meses y aún no tiene carga incremental ni gobierno de datos."
 
 ### 7. Conclusiones (1 min)
 > "Tenemos una base confiable para decidir. Próximo paso: automatizar la carga y escalar a producción."
@@ -99,3 +99,5 @@ Demostrar filtros: Fecha · Sucursal · Categoría · Segmento.
 - `log_rechazos.csv` (casos rechazados)
 - Capturas del dashboard + video demo (plan B)
 - `05_lineage.md` (trazabilidad por KPI)
+- `06_calidad/quality_comparison.md` (antes y después)
+- `06_calidad/hallazgos.md` (resultados comerciales y proyección)

@@ -2,7 +2,7 @@
 import sqlite3
 import pandas as pd
 from pathlib import Path
-from config import DW_PATH
+from config import DW_PATH, ROOT
 
 def build_dim_tiempo(ventas):
     fechas = pd.to_datetime(ventas["fecha_venta"], errors="coerce").dropna().dt.date.unique()
@@ -10,7 +10,8 @@ def build_dim_tiempo(ventas):
     d["id_tiempo"] = d["fecha"].dt.strftime("%Y%m%d").astype(int)
     d["anio"] = d["fecha"].dt.year
     d["mes"] = d["fecha"].dt.month
-    d["mes_nombre"] = d["fecha"].dt.month_name()
+    meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+    d["mes_nombre"] = d["fecha"].dt.month.map(lambda m: meses[m - 1])
     d["trimestre"] = d["fecha"].dt.quarter.map(lambda q: f"Q{q}")
     d["semana"] = d["fecha"].dt.isocalendar().week.astype(int)
     d["dia_semana"] = d["fecha"].dt.day_name()
@@ -53,7 +54,9 @@ def load_all(df_dict, ventas_fact):
     f[fact_cols].to_sql("FactVentas", conn, index=False, if_exists="replace")
 
     # Agregados
-    agg_mes = f.groupby("id_tiempo", as_index=False).agg(venta_neta=("venta_neta","sum"), cantidad=("cantidad","sum"))
+    agg_mes = f.merge(dimt[["id_tiempo", "anio", "mes", "mes_nombre", "trimestre"]], on="id_tiempo") \
+               .groupby(["anio", "mes", "mes_nombre", "trimestre"], as_index=False) \
+               .agg(venta_neta=("venta_neta", "sum"), cantidad=("cantidad", "sum"), num_ventas=("id_venta", "nunique"))
     agg_mes.to_sql("Agg_VentasMes", conn, index=False, if_exists="replace")
     agg_cat = f.merge(prod[["cod_producto","categoria"]], left_on="cod_producto", right_on="cod_producto", how="left") \
                .groupby("categoria", as_index=False).agg(venta_neta=("venta_neta","sum"))
@@ -61,6 +64,9 @@ def load_all(df_dict, ventas_fact):
     agg_suc = f.groupby("id_sucursal", as_index=False).agg(venta_neta=("venta_neta","sum"))
     agg_suc.to_sql("Agg_VentasSucursal", conn, index=False, if_exists="replace")
 
+    # Las vistas son parte del producto analitico y se recrean en cada carga.
+    views_sql = (ROOT / "04_dashboard" / "kpi_views.sql").read_text(encoding="utf-8")
+    conn.executescript(views_sql)
     conn.commit()
     conn.close()
     print(f"[LOAD] DW creado en {DW_PATH}")

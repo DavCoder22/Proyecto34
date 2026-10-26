@@ -144,22 +144,22 @@ No publicar `.env` ni credenciales reales.
 
 En local, el servicio `jupyter` usa `ETL_TARGET=sqlite` y escribe solo `03_dw/dw.db`; el servicio `etl` usa `ETL_TARGET=postgres` y carga el PostgreSQL local para que Superset lo consuma. Así el notebook local no se mezcla con la fuente del dashboard.
 
-### Opción B: Desplegar en Northflank (Para entregar y que lo prueben)
+### Opción B: Desplegar en Northflank (Neon + job ETL + Superset)
 
-1. Ir a [northflank.com](https://northflank.com) → Crear proyecto
-2. Conectar repositorio GitHub `https://github.com/DavCoder22/Proyecto34.git`
-3. Desplegar `PostgreSQL` (Addon/Service)
-4. Desplegar `Jupyter` usando `docker/Dockerfile` con `JUPYTER_TOKEN`, `ETL_TARGET=postgres` y `DATABASE_URL` apuntando a Neon.
-5. Desplegar `Apache Superset` usando `docker/superset/Dockerfile`, puerto `8088`, con `SUPERSET_SECRET_KEY`, `DATABASE_URL` (Neon), `SUPERSET_ADMIN_*` y su propia URL pública. Al iniciar crea automáticamente el dashboard `Sales Analytics`.
-6. Acceder por las URLs públicas generadas. En la nube, Jupyter y Superset comparten la misma base Neon: Jupyter sube los datos originales (`stg_*`) y transformados (`clean_*`), y Superset consume el DW (`fact_ventas` y vistas).
+1. Ir a [northflank.com](https://northflank.com) → proyecto `proyecto34`.
+2. Conectar el repositorio `https://github.com/DavCoder22/Proyecto34.git`.
+3. Crear el secret group `proyecto34-secrets` con `DATABASE_URL` de Neon, `ETL_TARGET=postgres`, `SUPERSET_SECRET_KEY`, `SUPERSET_ADMIN_*` y `SUPERSET_PORT=8008`.
+4. Crear el job `proyecto34-etl` con `docker/Dockerfile.etl`, contexto `.` y enlazar el secret group. Ejecutarlo una vez.
+5. Crear el servicio `proyecto34-superset` con `docker/superset/Dockerfile`, contexto `.`, puerto `8008`, health check `/health` y volumen `/app/superset_home`.
+6. Abrir la URL pública del servicio Superset.
+
+En la nube solo hay **un job (ETL) + un servicio adicional (Superset)**; no se necesita addon PostgreSQL ni Jupyter para el dashboard. El job carga en Neon los datos originales (`stg_*`), transformados (`clean_*`) y el DW que consume Superset.
 
 Guía detallada para Northflank: [`deploy/NORTHFLANK_SUPERSET.md`](deploy/NORTHFLANK_SUPERSET.md). Guía general de despliegue: [`deploy/SUPERSET_DEPLOY.md`](deploy/SUPERSET_DEPLOY.md).
 
-#### Archivos dentro de Jupyter en la nube
+#### Jupyter opcional en la nube
 
-El `docker/Dockerfile` copia el repositorio completo dentro de `/home/jovyan/work` y ejecuta el ETL durante la construcción de la imagen. Por eso, después de cada redeploy deben estar disponibles en Jupyter `01_datos`, `02_etl`, `03_dw`, `04_dashboard` y `06_calidad`.
-
-En Northflank configurar el contexto de construcción como la raíz del repositorio, seleccionar `docker/Dockerfile` y definir:
+Si además quieres el notebook en la nube, crea un servicio con `docker/Dockerfile` en el puerto `8888` y define:
 
 ```text
 JUPYTER_TOKEN=<token-seguro>
@@ -227,7 +227,7 @@ Para generar una visualización local sin configurar un servidor, ejecutar `pyth
 ## Flujo de Demostración
 
 1. **Jupyter Notebook** — Evidencia del ETL: lectura, nulos, duplicados, homologación, validación FK, reglas de negocio y carga a PostgreSQL.
-2. **Apache Superset** — Conclusión: Dashboard `Sales Analytics` con 4 KPIs y filtros interactivos. Se abre en su propia URL (puerto `8088` o dominio asignado).
+2. **Apache Superset** — Conclusión: Dashboard `Sales Analytics` con 4 KPIs y filtros interactivos. Se abre en su propia URL (puerto `8088` en local o `8008` en Northflank).
 3. **Northflank / Docker** — Evidenciar los servicios funcionando: Jupyter, PostgreSQL y Superset en direcciones separadas.
 
 ---

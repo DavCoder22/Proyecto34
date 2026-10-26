@@ -1,181 +1,142 @@
-# Desplegar Apache Superset en Northflank
+# Desplegar Apache Superset en Northflank (proyecto34)
 
-Guía paso a paso para publicar el dashboard **Sales Analytics** de la PoC en Northflank.
+Guía para el escenario real de la PoC:
 
-## Arquitectura en Northflank
+- **Neon** como base de datos.
+- **Un job ETL** que carga los datos en Neon.
+- **Un único servicio Superset** que publica el dashboard en el puerto **8008**.
+
+No se necesita un addon PostgreSQL en Northflank ni un servicio Jupyter para que el dashboard funcione.
+
+## Arquitectura
 
 ```text
-PostgreSQL addon  ->  Job ETL (carga el DW)  ->  Servicio Superset (dashboard)
+                         Neon (PostgreSQL)
+                        /                 \
+                       /                   \
+          Job ETL (Dockerfile.etl)     Servicio Superset
+          carga originales + DW        (docker/superset/Dockerfile)
+                                         puerto 8008
 ```
 
-El job ETL crea las tablas `dim_*`, `fact_ventas` y las vistas `v_ventas_*` en PostgreSQL. El servicio Superset se conecta a esas vistas y crea automáticamente el dashboard con sus cuatro gráficos.
+El job ETL crea en Neon:
 
-## Paso 0. Subir los archivos a GitHub
+- Datos originales: `stg_clientes`, `stg_sucursales`, `stg_productos`, `stg_ventas`.
+- Datos transformados: `clean_clientes`, `clean_sucursales`, `clean_productos`, `clean_ventas`.
+- Data warehouse: `dim_tiempo`, `dim_cliente`, `dim_producto`, `dim_sucursal`, `fact_ventas`.
+- Vistas del dashboard: `v_ventas_mes`, `v_ventas_categoria`, `v_ventas_sucursal`, `v_ventas_segmento`.
 
-Northflank construye desde el repositorio, no desde tu computadora. En este momento hay archivos del despliegue que aún no están versionados. Súbelos antes de crear los servicios:
+El servicio Superset se conecta a Neon, crea el dashboard `Sales Analytics` y publica la URL de acceso.
+
+## Datos del proyecto
+
+| Dato | Valor |
+|---|---|
+| Proyecto Northflank | `proyecto34` |
+| Repositorio | `DavCoder22/Proyecto34` |
+| Rama | `main` |
+| Puerto público de Superset | `8008` |
+| Base de datos | Neon (conexión directa) |
+
+## Paso 0. Subir los cambios a GitHub
+
+Northflank construye desde GitHub. Antes de crear o actualizar los recursos, verifica que estén en `main`:
 
 ```bash
-git add docker/superset docker/Dockerfile.etl 04_dashboard/kpi_views_postgres.sql 03_dw/schema.sql 02_etl/load.py requirements.txt
-git commit -m "feat: preparar despliegue de Superset en Northflank"
+git add docker/Dockerfile.etl docker/superset/superset_config.py docker/superset/entrypoint.sh deploy/
+git commit -m "fix: configurar Superset en 8008 para Northflank"
 git push origin main
 ```
 
-Archivos mínimos que deben existir en la rama `main`:
+Archivos mínimos que deben existir en `main`:
 
+- `docker/Dockerfile.etl`
 - `docker/superset/Dockerfile`
 - `docker/superset/entrypoint.sh`
 - `docker/superset/superset_config.py`
 - `docker/superset/bootstrap_dashboard.py`
-- `docker/Dockerfile.etl`
 - `04_dashboard/kpi_views_postgres.sql`
 - `03_dw/schema.sql`
 - `02_etl/load.py`
 - `requirements.txt`
 
-Sin esos archivos, el build de Northflank falla o el dashboard no se crea.
+## Paso 1. Preparar Neon
 
-## Paso 1. Crear el proyecto
-
-1. Entra a [northflank.com](https://northflank.com).
-2. Crea un proyecto, por ejemplo `poc-analisis-comercial`.
-3. Selecciona la región más cercana.
-
-## Paso 2. Crear el addon PostgreSQL
-
-1. En el proyecto: **Create new → Addon → PostgreSQL**.
-2. Nombre: `poc-postgres`.
-3. Versión: 15 o 16.
-4. Recursos para Sandbox: 0.2 vCPU y 512 MB de RAM. No actives alta disponibilidad ni acceso público.
-5. Crea el addon y espera a que esté **Running/Healthy**.
-6. Abre **Connection details** y copia el valor de `POSTGRES_URI`.
-
-Debe verse así:
+1. Entra a [neon.com](https://neon.com) y abre tu proyecto.
+2. En **Connect**, copia la **conexión directa**, sin `-pooler`.
+3. La URL debe quedar así:
 
 ```text
-postgresql+psycopg2://usuario:password@host:5432/basededatos
+postgresql+psycopg2://usuario:password@ep-xxxxx.region.aws.neon.tech/neondb?sslmode=require
 ```
 
-Usa siempre el host interno del addon. No uses `localhost` ni la URL pública para la comunicación entre servicios del mismo proyecto.
+4. Conserva `?sslmode=require`.
+5. Usa el prefijo `postgresql+psycopg2://`. Si Neon entrega `postgresql://`, el código lo normaliza, pero el prefijo explícito evita errores de driver.
 
-### Cómo mantener el addon dentro del plan gratuito
+## Paso 2. Crear el secret group
 
-Northflank tiene el plan **Sandbox**, que incluye **2 servicios, 2 jobs y 1 addon**, con hasta **20 USD/mes de recursos** en Northflank Cloud. El precio que muestra el addon es el costo de los recursos; si estás en Sandbox, ese costo se descuenta del crédito de 20 USD.
-
-Para que el despliegue quede dentro del crédito:
-
-| Recurso | Configuración recomendada | Costo aproximado |
-|---|---|---:|
-| Superset | 0.5 vCPU · 1 GB RAM | ~12,17 USD/mes |
-| PostgreSQL | 0.2 vCPU · 512 MB RAM | ~5,47 USD/mes |
-| Volumen de Superset | 1 GB | ~0,12 USD/mes |
-| Job ETL | Manual, solo cuando cargas datos | Centavos por ejecución |
-| **Total** | | **~17,76 USD/mes** |
-
-Con esa combinación quedas por debajo de los 20 USD/mes. Si aun así no quieres usar el addon, salta al **Paso 2B** y usa Neon. Evita estas configuraciones porque superan el crédito:
-
-- Superset con 1 vCPU y 2 GB RAM.
-- PostgreSQL con réplicas, alta disponibilidad o más de 1 GB.
-- Base de datos pública con IP externa.
-- Jobs programados cada hora o servicios adicionales que no uses.
-
-Si el addon sigue mostrando un cobro, revisa primero que tu equipo/proyecto esté en el plan **Sandbox** y no en **Pay as you go**. El precio puede aparecer en la pantalla de configuración, pero el Sandbox lo cubre hasta el límite de 20 USD. Si Northflank solicita una tarjeta, úsala solo para verificación y confirma en **Billing** que el plan activo es Sandbox y que el consumo mensual no supera los 20 USD.
-
-Si necesitas más memoria para Superset, una alternativa es usar un PostgreSQL externo gratuito (por ejemplo, Neon o Supabase) y eliminar el addon de Northflank. En ese caso, el servicio Superset y el job ETL se conectan a la base externa mediante `DATABASE_URL`; el consumo de Northflank baja y el addon deja de existir.
-
-## Paso 2B. Opción sin addon: PostgreSQL gratuito con Neon
-
-Si no quieres pagar el addon de Northflank, usa **Neon**, que tiene un plan gratuito sin tarjeta:
-
-- 1 GB de almacenamiento por proyecto.
-- 100 CU-hours de cómputo al mes.
-- Hasta 2 CU (≈8 GB de RAM).
-- Se suspende automáticamente a los 5 minutos de inactividad.
-- Sin tarjeta de crédito.
-
-Pasos:
-
-1. Crea una cuenta en [neon.com](https://neon.com).
-2. Crea un proyecto, por ejemplo `poc-analisis-comercial`.
-3. Elige la región más cercana a Northflank.
-4. En **Connect**, copia la **conexión directa** (sin `-pooler`). Debe verse así:
-
-```text
-postgresql+psycopg2://usuario:password@ep-xxxxx.us-east-2.aws.neon.tech/neondb?sslmode=require
-```
-
-5. No actives la conexión pooled para este caso. La conexión directa evita problemas de compatibilidad con Superset y con las migraciones del ETL.
-6. En Northflank, crea el secret group y pega esa URL como `DATABASE_URL`. No enlaces ningún addon.
-7. Usa el prefijo `postgresql+psycopg2://`. Si Neon te entrega `postgresql://`, cámbialo por `postgresql+psycopg2://`; el código también lo normaliza, pero el prefijo explícito evita el error `No module named 'psycopg'`.
-7. Ejecuta el job ETL y luego despliega Superset como se indica en los pasos siguientes.
-
-Con Neon el proyecto de Northflank queda con **1 servicio (Superset) + 1 job (ETL) + 0 addons**, dentro del Sandbox. El único costo es el consumo de Northflank, que debe quedar por debajo de los 20 USD/mes.
-
-Ten en cuenta que Neon suspende el cómputo cuando está inactivo. La primera consulta después de un periodo de inactividad puede tardar unos segundos; es normal. Antes de la exposición, abre el dashboard una vez para despertar Neon y evita que la primera consulta de la demo tenga latencia.
-
-## Paso 3. Crear el grupo de secretos
-
-1. En el proyecto: **Create new → Secret group**.
-2. Nombre: `poc-superset-secrets`.
-3. Si usas el addon de Northflank, en **Linked addons** selecciona el addon PostgreSQL y enlaza `POSTGRES_URI` con el alias `DATABASE_URL`. Si usas Neon, agrega `DATABASE_URL` manualmente con la cadena de conexión de Neon.
+1. En Northflank, abre el proyecto `proyecto34`.
+2. **Create new → Secret group**.
+3. Nombre: `proyecto34-secrets`.
 4. Agrega estas variables:
 
 ```text
+DATABASE_URL=postgresql+psycopg2://usuario:password@ep-xxxxx.region.aws.neon.tech/neondb?sslmode=require
 ETL_TARGET=postgres
 LOAD_POSTGRES=1
 REQUIRE_POSTGRES_LOAD=1
+
 SUPERSET_SECRET_KEY=<clave-larga-y-aleatoria>
 SUPERSET_ADMIN_USER=admin
 SUPERSET_ADMIN_PASS=<password-fuerte>
 SUPERSET_ADMIN_EMAIL=admin@poc.com
 SUPERSET_CREATE_ADMIN=1
+
+SUPERSET_PORT=8008
 SUPERSET_METADATA_DATABASE_URL=sqlite:////app/superset_home/superset.db
 SUPERSET_TALISMAN_ENABLED=false
+SUPERSET_COOKIE_SECURE=false
 SUPERSET_BOOTSTRAP_DASHBOARD=1
 SUPERSET_DW_DATABASE_NAME=PoC DW
 ```
 
-`SUPERSET_SECRET_KEY` debe ser larga y aleatoria. Puedes generarla con:
+Genera la clave con:
 
 ```bash
 openssl rand -hex 32
 ```
 
-También puedes usar como referencia la plantilla [`northflank.env.example`](northflank.env.example). No subas credenciales reales al repositorio.
+Notas:
 
-`SUPERSET_METADATA_DATABASE_URL` guarda los dashboards y usuarios de Superset. Para la demo se usa SQLite dentro de `/app/superset_home`; por eso el servicio necesita un volumen persistente.
+- `ETL_TARGET=postgres` es obligatorio para que el job escriba en Neon y no en SQLite.
+- `SUPERSET_PORT=8008` debe coincidir con el puerto del servicio Superset en Northflank.
+- La plantilla completa está en [`northflank.env.example`](northflank.env.example). No subas credenciales reales.
+- Para la metadata de Superset se usa SQLite dentro de `/app/superset_home`; por eso el servicio necesita un volumen persistente.
+- Si prefieres metadata en PostgreSQL, crea una base separada llamada `superset` en Neon y usa:
+  `SUPERSET_METADATA_DATABASE_URL=postgresql+psycopg2://.../superset?sslmode=require`.
 
-Si prefieres usar PostgreSQL también para la metadata de Superset, crea una base separada llamada `superset` y usa:
+## Paso 3. Crear el job ETL
 
-```text
-SUPERSET_METADATA_DATABASE_URL=postgresql+psycopg2://usuario:password@host:5432/superset
-```
-
-No apuntes la metadata a la misma base `bi_dw`: Superset crearía sus tablas junto al data warehouse y podría confundir el modelo analítico.
-
-## Paso 4. Crear el job ETL
-
-Este job carga los datos en PostgreSQL. Debe ejecutarse **antes** de crear el dashboard.
+Este job carga Neon. Debe ejecutarse **antes** de abrir el dashboard.
 
 1. En el proyecto: **Create new → Job**.
-2. Nombre: `poc-etl-load`.
+2. Nombre: `proyecto34-etl`.
 3. Fuente: **Git repository**.
 4. Repositorio: `DavCoder22/Proyecto34`.
 5. Rama: `main`.
 6. Build type: **Dockerfile**.
 7. Dockerfile path: `docker/Dockerfile.etl`.
 8. Build context: `.` (raíz del repositorio).
-9. Runtime environment: enlaza el secret group `poc-superset-secrets` o agrega manualmente:
+9. Runtime environment: enlaza el secret group `proyecto34-secrets`.
+10. Crea el job y ejecútalo con **Run job**. Si el job ya existe, solo actualiza el repositorio y vuelve a ejecutarlo.
+
+El Dockerfile ya define por defecto:
 
 ```text
-DATABASE_URL=<POSTGRES_URI del addon o Neon>
 ETL_TARGET=postgres
 LOAD_POSTGRES=1
 REQUIRE_POSTGRES_LOAD=1
 ```
-
-10. Crea el job y ejecútalo manualmente (**Run job**).
-
-El job crea en la base las tablas originales `stg_*`, las transformadas `clean_*`, el DW (`dim_*`, `fact_ventas`) y las vistas. El servicio Jupyter debe usar la misma `DATABASE_URL` con `ETL_TARGET=postgres` y `RUN_ETL_ON_START=1` para que el notebook muestre esos datos. En local no definas `ETL_TARGET=postgres`: deja `ETL_TARGET=sqlite` para que Jupyter use `03_dw/dw.db`.
 
 En los logs debes ver:
 
@@ -185,119 +146,94 @@ En los logs debes ver:
 Ventas fact filas: 6800
 ```
 
-Si el job falla, revisa que `DATABASE_URL` sea `postgresql+psycopg2://...` y que el addon esté healthy. Vuelve a ejecutar el job después de corregir la variable.
+Para comprobar en Neon:
 
-### Alternativa si no tienes job: cargar la base desde tu computadora
-
-Si no ves la opción **Job** o no quieres crearlo, puedes ejecutar el ETL localmente apuntando a Neon. Northflank solo necesita que la base ya tenga las tablas y vistas antes de arrancar Superset.
-
-En Linux o macOS:
-
-```bash
-export DATABASE_URL="postgresql+psycopg2://usuario:password@ep-xxxxx.region.aws.neon.tech/neondb?sslmode=require"
-export ETL_TARGET=postgres
-export LOAD_POSTGRES=1
-export REQUIRE_POSTGRES_LOAD=1
-.venv/bin/python 02_etl/main.py
+```sql
+SELECT 'stg_ventas' AS tabla, COUNT(*) FROM stg_ventas
+UNION ALL
+SELECT 'clean_ventas', COUNT(*) FROM clean_ventas
+UNION ALL
+SELECT 'fact_ventas', COUNT(*) FROM fact_ventas;
 ```
 
-En Windows PowerShell:
+Resultado esperado: `6870`, `6800` y `6800`.
 
-```powershell
-$env:DATABASE_URL="postgresql+psycopg2://usuario:password@ep-xxxxx.region.aws.neon.tech/neondb?sslmode=require"
-$env:ETL_TARGET="postgres"
-$env:LOAD_POSTGRES="1"
-$env:REQUIRE_POSTGRES_LOAD="1"
-.venv\Scripts\python.exe 02_etl/main.py
-```
+Si el job falla:
 
-Debes ver:
+- Revisa que `DATABASE_URL` sea la conexión directa de Neon.
+- Confirma `?sslmode=require`.
+- Confirma `ETL_TARGET=postgres`.
+- Revisa el mensaje `No se pudo cargar a PostgreSQL` en los logs.
 
-```text
-[LOAD] DW PostgreSQL actualizado en ...
-=== PIPELINE OK ===
-Ventas fact filas: 6800
-```
-
-Después de cargar Neon desde tu equipo, reinicia el servicio Superset en Northflank. El bootstrap encontrará las vistas y creará el dashboard. Esta alternativa no usa jobs ni addons de Northflank.
-
-## Paso 5. Crear el servicio Superset
+## Paso 4. Crear el único servicio Superset
 
 1. En el proyecto: **Create new → Service → Combined service**.
-2. Nombre: `poc-superset`.
-3. Repositorio: `DavCoder22/Proyecto34`.
-4. Rama: `main`.
-5. Build type: **Dockerfile**.
-6. Dockerfile path: `docker/superset/Dockerfile`.
-7. Build context: `.` (raíz del repositorio).
-8. Networking:
-   - Puerto: `8088`.
+2. Nombre: `proyecto34-superset`.
+3. Fuente: **Git repository**.
+4. Repositorio: `DavCoder22/Proyecto34`.
+5. Rama: `main`.
+6. Build type: **Dockerfile**.
+7. Dockerfile path: `docker/superset/Dockerfile`.
+8. Build context: `.` (raíz del repositorio).
+9. Networking:
+   - Puerto: `8008`.
    - Protocolo: `HTTP`.
    - Accesibilidad: `Public`.
-   - Northflank puede detectar el puerto por el `EXPOSE 8088` del Dockerfile; verifica que exista.
-9. Health check:
-   - Protocolo: `HTTP`.
-   - Path: `/health`.
-   - Puerto: `8088`.
-   - Initial delay: `120` segundos.
-   - Interval: `10` segundos.
-   - Timeout: `5` segundos.
-   - Failure threshold: `5`.
-10. Resources:
-   - Para el plan Sandbox: 0.5 vCPU y 1 GB de RAM.
-   - Si tienes presupuesto: 1 vCPU y 1 GB; solo sube a 2 GB si el dashboard lo necesita y el crédito lo permite.
-   - No uses 1 vCPU y 2 GB en Sandbox: el costo mensual supera los 20 USD.
-11. Persistent volume:
-   - Mount path: `/app/superset_home`.
-   - Tamaño: 1 GB.
-   - Sin este volumen, el dashboard puede desaparecer en cada redeploy porque la metadata SQLite se pierde.
-12. Environment:
-   - Enlaza el secret group `poc-superset-secrets`.
-   - Verifica que `DATABASE_URL` apunte al addon PostgreSQL.
-13. Crea el servicio y espera el build.
+   - No uses `8088` en la nube: el puerto del servicio y `SUPERSET_PORT` deben ser `8008`.
+10. Health check:
+    - Protocolo: `HTTP`.
+    - Path: `/health`.
+    - Puerto: `8008`.
+    - Initial delay: `120` segundos.
+    - Interval: `10` segundos.
+    - Timeout: `5` segundos.
+    - Failure threshold: `5`.
+11. Recursos recomendados para Sandbox:
+    - `0.5 vCPU`.
+    - `1 GB` de RAM.
+12. Volumen persistente:
+    - Mount path: `/app/superset_home`.
+    - Tamaño: `1 GB`.
+13. Environment:
+    - Enlaza el secret group `proyecto34-secrets`.
+    - Verifica que incluya `SUPERSET_PORT=8008` y `DATABASE_URL` de Neon.
+14. Crea el servicio y espera el build. Si el servicio ya existe, cambia su puerto a `8008`, confirma `SUPERSET_PORT=8008` en el secret group y redespliega.
 
-El primer arranque tarda más de lo normal porque ejecuta migraciones de Superset y crea el dashboard. Por eso el health check debe tener un initial delay de al menos 120 segundos.
+> `EXPOSE 8088` en el Dockerfile es solo el valor por defecto local. En Northflank el puerto real se define con `SUPERSET_PORT=8008` y el puerto del servicio. Si prefieres `8088`, cambia ambos a `8088`.
 
-## Paso 6. Verificar los logs
+## Paso 5. Verificar los logs
 
-En **Observe → Logs** del servicio Superset busca estas líneas:
+En **Observe → Logs** del servicio Superset busca:
 
 ```text
 [superset] Inicializando base de metadatos...
 [superset] Creando/verificando el dashboard Sales Analytics...
 [bootstrap] Dashboard Sales Analytics creado correctamente.
-Listening at: http://0.0.0.0:8088
+Listening at: http://0.0.0.0:8008
 ```
 
-Si ves:
+Si aparece:
 
 ```text
 [bootstrap] Esperando vistas KPI en PostgreSQL...
 ```
 
-significa que el ETL todavía no cargó las vistas o que `DATABASE_URL` está mal. Ejecuta de nuevo el job ETL y reinicia el servicio Superset.
+el job ETL todavía no cargó las vistas o `DATABASE_URL` no apunta a Neon. Ejecuta de nuevo el job y reinicia Superset.
 
-## Paso 7. Abrir el dashboard
+## Paso 6. Abrir el dashboard
 
-1. Abre la URL pública del servicio Superset (Northflank la muestra en **Overview → Domains**).
+1. Abre la URL pública del servicio Superset (**Overview → Domains**).
 2. Inicia sesión con `SUPERSET_ADMIN_USER` y `SUPERSET_ADMIN_PASS`.
-3. Ve a **Dashboards**.
-4. Abre **Sales Analytics**.
-5. Deben aparecer los cuatro gráficos:
-   - Evolución de Ventas.
-   - Ventas por Categoría.
-   - Desempeño por Sucursal.
-   - Ventas por Segmento.
-
-La URL directa suele ser:
+3. Ve a **Dashboards → Sales Analytics**.
+4. URL directa:
 
 ```text
 https://<url-publica-de-northflank>/superset/dashboard/sales-analytics/
 ```
 
-## Paso 8. Verificar los datos
+## Paso 7. Verificar los datos del dashboard
 
-Si necesitas comprobar que el data warehouse tiene los totales correctos, ejecuta en el addon o en SQL Lab:
+En SQL Lab o en Neon:
 
 ```sql
 SELECT SUM(venta_neta) AS ingresos,
@@ -314,47 +250,47 @@ ingresos      | unidades | margen        | transacciones
 7452222.71    | 13817    | 1966780.12    | 3587
 ```
 
+## Opcional: Jupyter en la nube
+
+Para el dashboard no necesitas Jupyter. Si además quieres el notebook en la nube:
+
+1. Crea un servicio con `docker/Dockerfile`.
+2. Puerto `8888` HTTP público.
+3. Variables:
+
+```text
+JUPYTER_TOKEN=<token-seguro>
+DATABASE_URL=postgresql+psycopg2://usuario:password@ep-xxxxx.region.aws.neon.tech/neondb?sslmode=require
+ETL_TARGET=postgres
+RUN_ETL_ON_START=1
+```
+
+4. En local, en cambio, usa `ETL_TARGET=sqlite` para que el notebook trabaje con `03_dw/dw.db` y no con Neon.
+
 ## Problemas frecuentes
 
 | Síntoma | Causa probable | Solución |
 |---|---|---|
-| El build falla porque no encuentra `docker/superset/Dockerfile` | Los archivos no están en GitHub o el path/contexto está mal | Haz commit y push; usa Dockerfile `docker/superset/Dockerfile` y contexto raíz |
-| `No module named psycopg2` | Se está usando la imagen oficial de Superset | Usa el Dockerfile del repositorio, que instala `psycopg2-binary` |
-| El servicio reinicia por health check | Superset tarda en arrancar o falta memoria | Initial delay 120 s y al menos 1 GB de RAM |
-| El dashboard no aparece | El ETL no cargó PostgreSQL o las vistas no existen | Ejecuta el job ETL o carga la base desde tu equipo, luego reinicia Superset; revisa logs del bootstrap |
-| No encuentro la opción Job en Northflank | El menú Create new no está en el proyecto o el plan no lo muestra | Entra al proyecto y usa **Create new → Job**; si no aparece, carga Neon localmente con el ETL |
-| `could not connect to server` | `DATABASE_URL` usa `localhost` o una URL externa | Usa el host interno del addon PostgreSQL |
-| El dashboard desaparece tras un redeploy | Metadata SQLite sin volumen persistente | Monta `/app/superset_home` o usa PostgreSQL para metadata |
-| No puedo entrar con la contraseña nueva | El usuario admin ya existía y `create-admin` no actualiza la contraseña | Usa la shell del servicio y ejecuta `superset fab reset-password --username admin --password ...`, o recrea el volumen de metadata |
-| Superset redirige a HTTPS o falla el login | Talisman o cookies seguras detrás del proxy | Mantén `SUPERSET_TALISMAN_ENABLED=false` y `SUPERSET_COOKIE_SECURE=false` |
-| `ModuleNotFoundError: No module named 'psycopg'` | SQLAlchemy tomó el driver psycopg3 al usar `postgresql://` | Usa `postgresql+psycopg2://` en `DATABASE_URL` o redepliega el código actualizado |
-| Neon rechaza la conexión por SSL | Se eliminó `sslmode=require` de la URL | Conserva `?sslmode=require` en `DATABASE_URL` |
-| Neon da error de conexión tras unos minutos inactivo | El compute se suspendió por scale to zero | Recarga el dashboard; la primera consulta reactiva Neon en segundos |
-| Quiero recrear el dashboard | El dashboard ya existe y el bootstrap lo omite | Define `SUPERSET_BOOTSTRAP_FORCE=1` y reinicia; esto elimina y recrea el dashboard |
+| El build no encuentra el Dockerfile | Path o contexto incorrecto | Dockerfile `docker/superset/Dockerfile`, contexto `.` |
+| `No module named psycopg2` | Se usó la imagen oficial de Superset | Usa `docker/superset/Dockerfile` del repositorio |
+| El servicio falla el health check | Puerto o tiempo de arranque incorrecto | Puerto `8008`, `/health`, initial delay `120` s y 1 GB RAM |
+| El dashboard no aparece | El job ETL no cargó las vistas en Neon | Ejecuta el job y reinicia Superset |
+| El dashboard desaparece tras redeploy | Metadata SQLite sin volumen | Monta `/app/superset_home` o usa una base `superset` en Neon |
+| Neon rechaza la conexión | Falta `sslmode=require` o se usó `-pooler` | Usa la conexión directa de Neon |
+| `could not connect to server` | `DATABASE_URL` incorrecta | Copia de nuevo la URL directa de Neon |
+| El ETL no escribe en Neon | `ETL_TARGET` no es `postgres` | Define `ETL_TARGET=postgres` en el secret group |
+| No puedo entrar con la contraseña nueva | El usuario admin ya existía | Ejecuta `superset fab reset-password` o recrea el volumen |
+| El servicio responde en 8088 y no en 8008 | `SUPERSET_PORT` y puerto del servicio no coinciden | Usa `8008` en ambos |
 
-## Checklist para la demo
+## Checklist
 
-- [ ] Los archivos de Superset están en la rama `main`.
-- [ ] El addon PostgreSQL está healthy.
-- [ ] El job ETL terminó con `Ventas fact filas: 6800`.
-- [ ] El servicio Superset está healthy.
-- [ ] El log muestra `[bootstrap] Dashboard Sales Analytics creado correctamente.`
-- [ ] La URL pública abre el login de Superset.
-- [ ] El dashboard `Sales Analytics` aparece en **Dashboards**.
-- [ ] Los cuatro gráficos cargan con datos.
-- [ ] Tienes a mano el usuario y la contraseña de administrador para la exposición.
-
-## Nota sobre acceso público
-
-El dashboard queda protegido por login. Para la exposición, entra con el usuario administrador. Si necesitas un enlace sin login, configura el rol público de Superset y publica el dashboard; no es recomendable para una PoC con datos comerciales.
-
-## Validación local realizada
-
-La misma configuración se probó localmente con Docker:
-
-- El job ETL cargó PostgreSQL y terminó con 6.800 filas en `fact_ventas`.
-- Superset creó el dashboard `Sales Analytics` con cuatro gráficos.
-- El endpoint `/health` respondió `200`.
-- El dashboard respondió `200` después del login.
-
-El problema de Northflank no es la lógica del dashboard, sino la configuración de red, el health check, la memoria y la persistencia de la metadata.
+- [ ] Repositorio `DavCoder22/Proyecto34` actualizado en `main`.
+- [ ] Neon tiene la conexión directa con `sslmode=require`.
+- [ ] Secret group `proyecto34-secrets` creado y enlazado.
+- [ ] Job ETL ejecutado con `Ventas fact filas: 6800`.
+- [ ] Servicio `proyecto34-superset` en puerto `8008` y público.
+- [ ] Volumen `/app/superset_home` montado.
+- [ ] Log con `[bootstrap] Dashboard Sales Analytics creado correctamente.`
+- [ ] URL pública abre el login de Superset.
+- [ ] Dashboard `Sales Analytics` muestra los cuatro gráficos.
+- [ ] Credenciales de administrador disponibles para la demo.

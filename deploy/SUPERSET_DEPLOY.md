@@ -2,7 +2,7 @@
 
 > Para Northflank, sigue la guía paso a paso: [NORTHFLANK_SUPERSET.md](NORTHFLANK_SUPERSET.md).
 
-Esta guía deja Superset funcionando con datos reales de la PoC. El ETL ahora carga el DW en SQLite y, si `DATABASE_URL` apunta a PostgreSQL, también en PostgreSQL. Superset se conecta a ese PostgreSQL y se publica en una URL/puerto distinto al de Jupyter.
+Esta guía deja Superset funcionando con datos reales de la PoC. El ETL usa `ETL_TARGET` para elegir el destino: `sqlite` en local o `postgres` para Neon/PostgreSQL. Superset se conecta a ese PostgreSQL y se publica en su propia URL.
 
 ## Opción 1 — Stack independiente con Docker (cualquier servidor o VPS)
 
@@ -46,45 +46,34 @@ docker compose --env-file .env -f docker/docker-compose.superset.yml run --rm et
 
 Si quieres un dominio (por ejemplo `https://bi.tudominio.com`), apunta un proxy inverso (Nginx, Caddy o Traefik) al puerto `8088` del servidor. Superset ya tiene `ENABLE_PROXY_FIX=True`.
 
-## Opción 2 — Northflank como segundo servicio (URL distinta)
+## Opción 2 — Northflank con Neon (job ETL + un servicio Superset)
 
-> Guía detallada con job ETL, health check, volumen persistente y solución de problemas: [NORTHFLANK_SUPERSET.md](NORTHFLANK_SUPERSET.md).
+> Guía detallada con secret group, job ETL, health check, volumen persistente y solución de problemas: [NORTHFLANK_SUPERSET.md](NORTHFLANK_SUPERSET.md).
 
-1. Crea o reutiliza un addon **PostgreSQL** en el mismo proyecto. Copia su connection string interna.
-2. Crea un servicio **Superset**:
-   - Repositorio: `DavCoder22/Proyecto34`
-   - Build context: raíz del repositorio
-   - Dockerfile: `docker/superset/Dockerfile`
-   - Puerto: `8088` (HTTP, público)
-   - Health check: ruta `/health`
-3. Variables de entorno del servicio Superset:
+En este escenario Neon es la única base de datos y solo se crea un servicio adicional: **Superset en el puerto 8008**. No se necesita addon PostgreSQL en Northflank ni servicio Jupyter para el dashboard.
+
+1. Crea el secret group `proyecto34-secrets` con:
 
 ```text
+DATABASE_URL=postgresql+psycopg2://usuario:password@ep-xxxxx.region.aws.neon.tech/neondb?sslmode=require
+ETL_TARGET=postgres
+LOAD_POSTGRES=1
+REQUIRE_POSTGRES_LOAD=1
 SUPERSET_SECRET_KEY=<clave-larga-y-aleatoria>
 SUPERSET_ADMIN_USER=admin
 SUPERSET_ADMIN_PASS=<password-fuerte>
 SUPERSET_ADMIN_EMAIL=admin@poc.com
+SUPERSET_PORT=8008
 SUPERSET_METADATA_DATABASE_URL=sqlite:////app/superset_home/superset.db
 SUPERSET_TALISMAN_ENABLED=false
-DATABASE_URL=postgresql+psycopg2://usuario:password@host:5432/bi_dw
-SUPERSET_DW_DATABASE_NAME=PoC DW
+SUPERSET_COOKIE_SECURE=false
 SUPERSET_BOOTSTRAP_DASHBOARD=1
+SUPERSET_DW_DATABASE_NAME=PoC DW
 ```
 
-`DATABASE_URL` permite que Superset cree automáticamente la conexión al DW y el dashboard `Sales Analytics`. Si no lo defines, Superset arranca vacío y tendrías que crear la conexión/datasets/gráficos a mano.
-
-Opcional: agrega un volumen persistente en `/app/superset_home` para no perder dashboards al redeploy. Si prefieres PostgreSQL como metadatos, crea una base `superset` y usa:
-
-```text
-SUPERSET_METADATA_DATABASE_URL=postgresql+psycopg2://usuario:password@host:5432/superset
-```
-
-4. Despliega y copia la **URL pública de Superset**. Esa es la "otra dirección".
-5. Carga el DW en PostgreSQL:
-   - **Importante:** vuelve a desplegar Jupyter con el `docker/Dockerfile` actualizado. El entrypoint nuevo ejecuta el ETL al arrancar.
-   - En el servicio Jupyter, define `DATABASE_URL` con la connection string del PostgreSQL y `RUN_ETL_ON_START=1`; reinicia el servicio. El entrypoint cargará PostgreSQL.
-   - Alternativa: crea un **job** de Northflank usando `docker/Dockerfile.etl`, con `DATABASE_URL`, `LOAD_POSTGRES=1` y `REQUIRE_POSTGRES_LOAD=1`, y ejecútalo una vez.
-6. Entra a Superset y crea la conexión al DW (ver abajo).
+2. Crea el job **`proyecto34-etl`** con Dockerfile `docker/Dockerfile.etl`, contexto `.` y enlaza el secret group. Ejecútalo una vez.
+3. Crea el servicio **`proyecto34-superset`** con Dockerfile `docker/superset/Dockerfile`, contexto `.`, puerto `8008` HTTP público, health check `/health`, volumen `/app/superset_home` y enlaza el secret group.
+4. Copia la **URL pública de Superset** y abre el dashboard `Sales Analytics`.
 
 ## Configurar el dashboard en Superset
 
@@ -95,10 +84,10 @@ El despliegue crea automáticamente la conexión, los datasets, los 4 gráficos 
 `Settings` → `Database Connections` → `+ Database` → `PostgreSQL`:
 
 ```text
-postgresql+psycopg2://bi_user:bi_pass@postgres:5432/bi_dw
+postgresql+psycopg2://usuario:password@postgres:5432/bi_dw
 ```
 
-En Northflank usa el host/puerto/usuario que te dio el addon. Prueba la conexión y guarda.
+En Northflank usa la conexión directa de Neon (sin `-pooler` y con `?sslmode=require`). Prueba la conexión y guarda.
 
 ### 2. Datasets
 
@@ -151,5 +140,5 @@ Resultado esperado: `7452222.71`, `13817`, `1966780.12`, `3587`.
 | `could not connect to server` | `DATABASE_URL` debe usar el host interno del PostgreSQL (`postgres` en Docker, host del addon en Northflank). |
 | Los dashboards desaparecen al redeploy | La metadata está en SQLite sin volumen. Agrega el volumen `/app/superset_home` o usa PostgreSQL como metadata. |
 | `No module named psycopg2` | Estás usando la imagen oficial sin el driver. Reconstruye con `docker/superset/Dockerfile`. |
-| No abre el puerto 8088 | Expón el puerto en el servidor/Northflank o configura el proxy inverso. |
+| No abre el puerto configurado | En local usa 8088; en Northflank usa 8008 y expón ese puerto o configura el proxy inverso. |
 | Superset redirige a HTTPS y falla | Deja `SUPERSET_TALISMAN_ENABLED=false` detrás de HTTP; con HTTPS puedes activarlo. |

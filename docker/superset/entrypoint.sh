@@ -34,4 +34,4 @@ if [[ -x /usr/bin/run-server.sh ]]; then
     exec /usr/bin/run-server.sh
 fi
 
-exec superset run -h 0.0.0.0 -p 8088 --with-threads
+exec superset run -h 0.0.0.0 -p "${SUPERSET_PORT:-8088}" --with-threads

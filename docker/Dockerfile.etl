@@ -6,6 +6,7 @@ LABEL org.opencontainers.image.description="Carga el data warehouse de la PoC en
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app \
+    ETL_TARGET=postgres \
     LOAD_POSTGRES=1 \
     REQUIRE_POSTGRES_LOAD=1
 

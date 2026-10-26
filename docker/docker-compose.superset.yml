@@ -46,7 +46,7 @@ services:
       etl:
         condition: service_completed_successfully
     ports:
-      - "${SUPERSET_PORT:-8088}:8088"
+      - "${SUPERSET_PORT:-8088}:${SUPERSET_PORT:-8088}"
     volumes:
       - superset_home:/app/superset_home
 

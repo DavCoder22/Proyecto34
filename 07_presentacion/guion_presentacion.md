@@ -19,12 +19,12 @@ Mostrar cómo la integración y calidad de los datos permite **decisiones comerc
 |---|---|---|
 | Extracción | Python (pandas) | Lectura de múltiples formatos (CSV, Excel) |
 | Transformación | Python (pandas) | Reglas de negocio auditables y reproducibles |
-| Almacenamiento | SQLite (PoC) / PostgreSQL-Snowflake (prod) | Portable hoy, escalable mañana |
+| Almacenamiento | SQLite (evidencia) / PostgreSQL (Superset) | Portable hoy, escalable mañana |
 | Calidad | Scripts propios + Great Expectations (prod) | Métricas medibles y log de rechazos |
-| Visualización | **Power BI Desktop** | Conecta directo al DW, DAX para KPIs, filtros interactivos |
-| Orquestación | `.bat` / Airflow (prod) | Ejecución reproducible |
+| Visualización | **Apache Superset** (web) / Power BI (respaldo local) | Dashboard interactivo conectado al DW PostgreSQL |
+| Orquestación | `.bat` / Docker / Airflow (prod) | Ejecución reproducible |
 
-> **Mensaje clave para la mesa:** "La herramienta de BI (Power BI) es la cara visible; por detrás hay un proceso de calidad que garantiza que los números sean confiables."
+> **Mensaje clave para la mesa:** "Apache Superset es la cara visible; por detrás hay un proceso de calidad que garantiza que los números sean confiables."
 
 ---
 
@@ -48,6 +48,8 @@ Mostrar `profile_report.md` y `log_rechazos.csv`.
 
 ### 5. Demo del dashboard — 4 KPIs (4 min)
 
+Abrir **Apache Superset** en su URL propia (puerto `8088` en local o `8008` en Northflank), iniciar sesión y abrir el dashboard `Sales Analytics`. Si Superset no estuviera disponible, usar `04_dashboard/dashboard.html` como plan B.
+
 **KPI 1 — Evolución de ventas**
 > "¿Cómo van las ventas mes a mes? Serie temporal para detectar estacionalidad."
 
@@ -63,7 +65,14 @@ Mostrar `profile_report.md` y `log_rechazos.csv`.
 Demostrar filtros: Fecha · Sucursal · Categoría · Segmento.
 
 ### 6. Validación y limitaciones (2 min)
-> "Validamos cuadre: el total del dashboard coincide con FactVentas, con 7.452.222,71 de ingresos netos, 13.817 unidades, 1.966.780,12 de margen y 3.587 transacciones. La PoC cubre 32 meses y aún no tiene carga incremental ni gobierno de datos."
+> "Validamos cuadre: el total del dashboard coincide con `fact_ventas` en PostgreSQL, con 7.452.222,71 de ingresos netos, 13.817 unidades, 1.966.780,12 de margen y 3.587 transacciones. La PoC cubre 32 meses y aún no tiene carga incremental ni gobierno de datos."
+
+Mostrar la consulta de control:
+
+```sql
+SELECT SUM(venta_neta), SUM(cantidad), SUM(margen), COUNT(DISTINCT id_venta)
+FROM fact_ventas;
+```
 
 ### 7. Conclusiones (1 min)
 > "Tenemos una base confiable para decidir. Próximo paso: automatizar la carga y escalar a producción."
@@ -79,13 +88,13 @@ Demostrar filtros: Fecha · Sucursal · Categoría · Segmento.
    > "Log de rechazos, métricas de calidad antes/después y cuadre de totales dashboard vs fuente."
 
 3. **¿Se puede actualizar automáticamente?**
-   > "Hoy es carga full manual. Trabajo futuro: carga incremental y orquestación con Airflow."
+   > "Al arrancar Jupyter se ejecuta el ETL y, si `DATABASE_URL` está definida, recarga PostgreSQL (`RUN_ETL_ON_START=1`). Para el stack de Superset se usa `docker compose run --rm etl`. Trabajo futuro: carga incremental y Airflow."
 
 4. **¿Qué pasa si entra un dato nuevo con error?**
    > "El validador lo rechaza y lo registra en `log_rechazos.csv` con el motivo."
 
 5. **¿Cuánto cuesta escalar?**
-   > "La PoC es gratuita (Python + SQLite + Power BI Desktop). Producción: Snowflake + Power BI Service (licencias)."
+   > "La PoC es open source (Python + PostgreSQL + Apache Superset). Producción: infraestructura gestionada, orquestación y gobierno de datos."
 
 6. **¿Qué decisiones se pueden tomar hoy?**
    > "Priorizar categorías, asignar presupuesto a sucursales top, campañas por segmento, detectar estacionalidad."
@@ -95,6 +104,9 @@ Demostrar filtros: Fecha · Sucursal · Categoría · Segmento.
 ## 📎 Material de respaldo
 
 - Diagrama de arquitectura (slide)
+- URL de Superset (puerto `8088` en local o `8008` en Northflank) + credenciales de admin
+- `04_dashboard/dashboard.html` (plan B sin Superset)
+- `deploy/SUPERSET_DEPLOY.md` (despliegue de Superset en otra dirección)
 - `profile_report.md` (calidad antes)
 - `log_rechazos.csv` (casos rechazados)
 - Capturas del dashboard + video demo (plan B)

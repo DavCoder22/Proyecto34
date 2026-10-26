@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS dim_producto (
     categoria VARCHAR(60),
     subcategoria VARCHAR(60),
     marca VARCHAR(60),
-    costo_unitario NUMERIC(12,2),
+    costo_unitario NUMERIC(18,6),
     estado_producto VARCHAR(15)
 );
 
@@ -55,12 +55,12 @@ CREATE TABLE IF NOT EXISTS fact_ventas (
     id_producto INTEGER REFERENCES dim_producto(id_producto),
     id_sucursal INTEGER REFERENCES dim_sucursal(id_sucursal),
     cantidad INTEGER,
-    precio_unitario NUMERIC(12,2),
-    descuento_pct NUMERIC(5,2),
-    venta_bruta NUMERIC(14,2),
-    venta_neta NUMERIC(14,2),
-    costo_total NUMERIC(14,2),
-    margen NUMERIC(14,2),
+    precio_unitario NUMERIC(18,6),
+    descuento_pct NUMERIC(8,6),
+    venta_bruta NUMERIC(18,6),
+    venta_neta NUMERIC(18,6),
+    costo_total NUMERIC(18,6),
+    margen NUMERIC(18,6),
     canal_venta VARCHAR(30),
     metodo_pago VARCHAR(30)
 );

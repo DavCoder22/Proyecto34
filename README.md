@@ -26,18 +26,25 @@ Todo desplegable con **Docker** o directamente en **Northflank**.
 PoC_Analisis_Comercial/
 ├── 01_datos/                # CSV/Excel originales
 ├── 02_etl/
-│   ├── *.py                 # Scripts ETL locales (SQLite + Power BI)
-│   └── 01_etl_pipeline.ipynb # Notebook para PostgreSQL + Jupyter
+│   ├── *.py                 # Scripts ETL (SQLite + PostgreSQL)
+│   └── 01_etl_pipeline.ipynb # Notebook de evidencia ETL
 ├── 03_dw/
 │   ├── schema.sql           # DDL PostgreSQL (Star Schema)
 │   └── schema_sqlite.sql    # Respaldo esquema SQLite
 ├── 04_dashboard/
 │   ├── kpi_views.sql        # Vistas SQLite
+│   ├── kpi_views_postgres.sql # Vistas PostgreSQL / Superset
 │   ├── dax_measures.txt     # Medidas DAX (Power BI)
 │   └── README_SUPERSET.md   # Guía Apache Superset
 ├── 06_calidad/              # profile_report.md, log_rechazos.csv
 ├── 07_presentacion/         # Guion de presentación
-├── docker/                  # Dockerfile + docker-compose.yml
+├── deploy/                  # Guía para desplegar Superset en otra dirección
+├── docker/                  # Dockerfiles, Superset y compose
+│   ├── Dockerfile           # Jupyter + evidencia ETL
+│   ├── Dockerfile.etl       # Carga del DW a PostgreSQL
+│   ├── docker-compose.yml   # Jupyter + Superset + PostgreSQL
+│   ├── docker-compose.superset.yml # Stack Superset independiente
+│   └── superset/            # Imagen/config de Apache Superset
 ├── .env.example             # Variables de entorno
 ├── run_local.bat            # Levantar stack local
 ├── run_etl.bat              # ETL local SQLite
@@ -50,8 +57,8 @@ PoC_Analisis_Comercial/
 
 | Capa | Tecnología | Uso |
 |---|---|---|
-| ETL (Evidencia) | Jupyter Notebook + Pandas | Limpieza, homologación, validación y carga a PostgreSQL |
-| Data Warehouse | PostgreSQL | Almacenamiento del modelo estrella |
+| ETL (Evidencia) | Jupyter Notebook + Pandas | Limpieza, homologación, validación y carga a SQLite/PostgreSQL |
+| Data Warehouse | SQLite (evidencia) / PostgreSQL (Superset) | Almacenamiento del modelo estrella |
 | Dashboard | Apache Superset | Gráficos interactivos para toma de decisiones |
 | Contenedores | Docker / Docker Compose | Ejecución portable en local/nube |
 | Nube | Northflank | Despliegue accesible por URL |
@@ -129,11 +136,13 @@ No publicar `.env` ni credenciales reales.
 ### Opción A: Local con Docker (Recomendado para pruebas)
 
 1. Copiar variables: `copy .env.example .env`
-2. Ejecutar: `run_local.bat` o `docker compose -f docker/docker-compose.yml up --build`
+2. Ejecutar: `run_local.bat` o `docker compose --env-file .env -f docker/docker-compose.yml up --build`
 3. Acceder:
    - Jupyter: `http://localhost:8888` (token: `bi_poc`)
    - Superset: `http://localhost:8088` (admin / admin)
    - PostgreSQL: `localhost:5432`
+
+Al arrancar, Jupyter ejecuta el ETL y, como `DATABASE_URL` apunta a PostgreSQL, carga el DW en las tablas `dim_*` y `fact_ventas`. Superset ya usa la imagen configurada (`docker/superset/Dockerfile`) y puede conectarse a `bi_dw`.
 
 ### Opción B: Desplegar en Northflank (Para entregar y que lo prueben)
 
@@ -141,8 +150,10 @@ No publicar `.env` ni credenciales reales.
 2. Conectar repositorio GitHub `https://github.com/DavCoder22/Proyecto34.git`
 3. Desplegar `PostgreSQL` (Addon/Service)
 4. Desplegar `Jupyter` usando `docker/Dockerfile` con variables `JUPYTER_TOKEN` y `DATABASE_URL`
-5. Desplegar `Apache Superset` conectado al mismo PostgreSQL
-6. Acceder por las URLs públicas generadas
+5. Desplegar `Apache Superset` usando `docker/superset/Dockerfile`, puerto `8088`, con `SUPERSET_SECRET_KEY`, `DATABASE_URL`, `SUPERSET_ADMIN_*` y su propia URL pública (dirección distinta a Jupyter). Al iniciar crea automáticamente el dashboard `Sales Analytics`.
+6. Acceder por las URLs públicas generadas. El ETL de Jupyter carga el DW en el PostgreSQL compartido y Superset consume esas tablas.
+
+Guía detallada para Northflank: [`deploy/NORTHFLANK_SUPERSET.md`](deploy/NORTHFLANK_SUPERSET.md). Guía general de despliegue: [`deploy/SUPERSET_DEPLOY.md`](deploy/SUPERSET_DEPLOY.md).
 
 #### Archivos dentro de Jupyter en la nube
 
@@ -152,9 +163,11 @@ En Northflank configurar el contexto de construcción como la raíz del reposito
 
 ```text
 JUPYTER_TOKEN=<token-seguro>
+DATABASE_URL=postgresql+psycopg2://usuario:password@host:5432/bi_dw
+RUN_ETL_ON_START=1
 ```
 
-Después de reconstruir la imagen, abrir `02_etl/01_etl_pipeline.ipynb`. El ETL ya habrá sido ejecutado durante el build y sus resultados estarán en `03_dw/dw.db` y `06_calidad/`. Para volver a ejecutarlo manualmente desde una terminal Jupyter:
+Al arrancar el contenedor, si `DATABASE_URL` está definida, el ETL se ejecuta y carga el DW en PostgreSQL; luego inicia Jupyter. Después de reconstruir la imagen, abrir `02_etl/01_etl_pipeline.ipynb`. Los resultados de SQLite estarán en `03_dw/dw.db` y `06_calidad/`; las tablas de Superset estarán en PostgreSQL. Para volver a ejecutarlo manualmente desde una terminal Jupyter:
 
 ```bash
 python 02_etl/main.py
@@ -176,6 +189,23 @@ run_etl.bat
 ```
 Usar `03_dw/dw.db` con Power BI Desktop.
 
+### Opción D: Superset en otra dirección (stack independiente)
+
+Para publicar Superset fuera de Jupyter/Northflank, con su propio PostgreSQL y datos cargados:
+
+```bash
+cp .env.example .env
+docker compose --env-file .env -f docker/docker-compose.superset.yml up -d --build
+```
+
+Acceder a `http://IP_DEL_SERVIDOR:8088` (por defecto `admin` / `admin`). El contenedor `etl` carga el DW en PostgreSQL antes de arrancar Superset, y Superset crea automáticamente el dashboard `Sales Analytics` con sus 4 gráficos. Para recargar datos:
+
+```bash
+docker compose --env-file .env -f docker/docker-compose.superset.yml run --rm etl
+```
+
+Guía completa, incluido Northflank como segundo servicio: [`deploy/SUPERSET_DEPLOY.md`](deploy/SUPERSET_DEPLOY.md).
+
 ### Evidencia académica del ETL
 
 Desde la raíz del proyecto, ejecutar `python 02_etl/main.py` (o `run_etl.bat` en Windows). El proceso genera:
@@ -185,18 +215,19 @@ Desde la raíz del proyecto, ejecutar `python 02_etl/main.py` (o `run_etl.bat` e
 - `06_calidad/reglas_transformacion.md`: problema, regla, criterio y efecto esperado.
 - `06_calidad/log_rechazos.csv`: filas rechazadas por integridad referencial.
 - `03_dw/dw.db`: modelo estrella y vistas para el dashboard.
+- Tablas `dim_*` y `fact_ventas` en PostgreSQL, solo si `DATABASE_URL` está definida. Con `LOAD_POSTGRES=0` se omite esta carga.
 
 El notebook `02_etl/01_etl_pipeline.ipynb` ejecuta el mismo pipeline y muestra los cuatro indicadores: ingresos, unidades, margen bruto y transacciones.
 
-Para generar una visualización local sin configurar un servidor, ejecutar `python 04_dashboard/build_dashboard.py` y abrir `04_dashboard/dashboard.html`. El HTML contiene tarjetas de los cuatro indicadores y gráficos de evolución, categoría, sucursal y segmento. Para una demo con filtros, usar la misma base `03_dw/dw.db` en Superset o Power BI.
+Para generar una visualización local sin configurar un servidor, ejecutar `python 04_dashboard/build_dashboard.py` y abrir `04_dashboard/dashboard.html`. El HTML contiene tarjetas de los cuatro indicadores y gráficos de evolución, categoría, sucursal y segmento. Para una demo con filtros, usar Superset conectado a PostgreSQL (ver [`deploy/SUPERSET_DEPLOY.md`](deploy/SUPERSET_DEPLOY.md)) o Power BI con `03_dw/dw.db`.
 
 ---
 
 ## Flujo de Demostración
 
 1. **Jupyter Notebook** — Evidencia del ETL: lectura, nulos, duplicados, homologación, validación FK, reglas de negocio y carga a PostgreSQL.
-2. **Apache Superset** — Conclusión: Dashboard `Sales Analytics` con 4 KPIs y filtros interactivos.
-3. **Northflank** — Evidenciar los 3 servicios funcionando.
+2. **Apache Superset** — Conclusión: Dashboard `Sales Analytics` con 4 KPIs y filtros interactivos. Se abre en su propia URL (puerto `8088` o dominio asignado).
+3. **Northflank / Docker** — Evidenciar los servicios funcionando: Jupyter, PostgreSQL y Superset en direcciones separadas.
 
 ---
 
@@ -228,7 +259,8 @@ Ver documentación completa:
 
 ## Notas para Entrega
 
-- El repositorio debe subirse completo a GitHub para desplegar en Zeabur.
+- El repositorio debe subirse completo a GitHub para desplegar en Northflank o Docker.
 - Usar siempre `.env.example` como referencia, nunca subir `.env` real.
 - El notebook `02_etl/01_etl_pipeline.ipynb` contiene la evidencia obligatoria para la defensa.
-- Apache Superset es la herramienta de BI para la presentación en mesa de juntas.
+- Apache Superset es la herramienta de BI para la presentación en mesa de juntas. Para desplegarlo en una URL separada, seguir [`deploy/SUPERSET_DEPLOY.md`](deploy/SUPERSET_DEPLOY.md).
+- El ETL carga SQLite siempre y PostgreSQL cuando `DATABASE_URL` está definida; así Superset y el dashboard HTML trabajan sobre el mismo universo validado.

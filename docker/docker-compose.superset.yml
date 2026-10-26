@@ -1,0 +1,54 @@
+name: poc-superset
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: bi_superset_postgres
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ../03_dw/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  etl:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.etl
+    container_name: bi_superset_etl
+    env_file:
+      - ../.env
+    environment:
+      LOAD_POSTGRES: "1"
+      REQUIRE_POSTGRES_LOAD: "1"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  superset:
+    build:
+      context: ..
+      dockerfile: docker/superset/Dockerfile
+    container_name: bi_superset_app
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      etl:
+        condition: service_completed_successfully
+    ports:
+      - "${SUPERSET_PORT:-8088}:8088"
+    volumes:
+      - superset_home:/app/superset_home
+
+volumes:
+  pg_data:
+  superset_home:

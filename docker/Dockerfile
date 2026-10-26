@@ -16,6 +16,8 @@ COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt psycopg2-binary matplotlib seaborn ipywidgets
 
 COPY --chown=${NB_UID}:${NB_GID} . /home/jovyan/work
+COPY --chown=${NB_UID}:${NB_GID} docker/entrypoint.sh /usr/local/bin/poc-entrypoint.sh
+RUN chmod +x /usr/local/bin/poc-entrypoint.sh
 
 # Dejar lista la evidencia: fuentes, staging, DW, reportes y dashboard HTML.
 RUN python 02_etl/main.py && \
@@ -23,6 +25,8 @@ RUN python 02_etl/main.py && \
 
 EXPOSE 8888
 
+# Al arrancar, si DATABASE_URL existe, se recarga el DW en PostgreSQL y luego inicia Jupyter.
+ENTRYPOINT ["/usr/local/bin/poc-entrypoint.sh"]
 CMD start-notebook.sh \
     --ip=0.0.0.0 \
     --port=8888 \

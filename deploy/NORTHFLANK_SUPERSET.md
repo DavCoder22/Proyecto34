@@ -292,5 +292,5 @@ RUN_ETL_ON_START=1
 - [ ] Volumen `/app/superset_home` montado.
 - [ ] Log con `[bootstrap] Dashboard Sales Analytics creado correctamente.`
 - [ ] URL pública abre el login de Superset.
-- [ ] Dashboard `Sales Analytics` muestra los cuatro gráficos.
+- [ ] Dashboard `Sales Analytics` muestra las 6 tarjetas KPI y los 4 gráficos con el tema UCE.
 - [ ] Credenciales de administrador disponibles para la demo.

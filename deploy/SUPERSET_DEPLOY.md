@@ -30,7 +30,7 @@ http://IP_DEL_SERVIDOR:8088
 
 Usuario y contraseña: los de `SUPERSET_ADMIN_USER` / `SUPERSET_ADMIN_PASS` (por defecto `admin` / `admin`).
 
-Al entrar, el dashboard **Sales Analytics** ya debe aparecer en `Dashboards`, con la conexión `PoC DW`, los 4 datasets y los 4 gráficos creados automáticamente. Si defines `SUPERSET_BOOTSTRAP_FORCE=1` y reinicias Superset, el dashboard se elimina y se vuelve a crear.
+Al entrar, el dashboard **Sales Analytics** ya debe aparecer en `Dashboards`, con la conexión `PoC DW`, los 5 datasets, las 6 tarjetas KPI y los 4 gráficos creados automáticamente. Si defines `SUPERSET_BOOTSTRAP_FORCE=1` y reinicias Superset, el dashboard se elimina y se vuelve a crear.
 
 Si ya tenías tablas creadas con un esquema anterior, bórralas una vez para aplicar la precisión monetaria actual:
 
@@ -77,7 +77,7 @@ SUPERSET_DW_DATABASE_NAME=PoC DW
 
 ## Configurar el dashboard en Superset
 
-El despliegue crea automáticamente la conexión, los datasets, los 4 gráficos y el dashboard `Sales Analytics`. Esta sección sirve para personalizarlo o recrearlo manualmente si desactivas `SUPERSET_BOOTSTRAP_DASHBOARD`.
+El despliegue crea automáticamente la conexión, los datasets, las 6 tarjetas KPI, los 4 gráficos y el dashboard `Sales Analytics`. Esta sección sirve para personalizarlo o recrearlo manualmente si desactivas `SUPERSET_BOOTSTRAP_DASHBOARD`.
 
 ### 1. Conexión a la base del DW
 
@@ -99,10 +99,22 @@ Crea un dataset por cada vista KPI (recomendado porque ya traen agregados y porc
 | `v_ventas_categoria` | Ventas por categoría + participación |
 | `v_ventas_sucursal` | Ranking por sucursal + ticket promedio |
 | `v_ventas_segmento` | Ventas por segmento + ticket promedio |
+| `v_kpis_consolidados` | Tarjetas de indicadores consolidados |
 
 También puedes usar las tablas base `fact_ventas`, `dim_tiempo`, `dim_cliente`, `dim_producto` y `dim_sucursal` para filtros y gráficos personalizados.
 
-### 3. Los 4 gráficos
+### 3. Las 6 tarjetas KPI
+
+| Tarjeta | Dataset | Métrica | Formato |
+|---|---|---|---|
+| Ingresos Netos | `v_kpis_consolidados` | `kpi_ingresos` | `$,.2f` |
+| Unidades Vendidas | `v_kpis_consolidados` | `kpi_unidades` | `,.0f` |
+| Margen Bruto | `v_kpis_consolidados` | `kpi_margen` | `$,.2f` |
+| Transacciones | `v_kpis_consolidados` | `kpi_transacciones` | `,.0f` |
+| Ticket Promedio | `v_kpis_consolidados` | `kpi_ticket_promedio` | `$,.2f` |
+| Margen % | `v_kpis_consolidados` | `kpi_margen_pct` | `.2%` |
+
+### 4. Los 4 gráficos
 
 | KPI | Tipo | Eje / Dimensión | Métrica |
 |---|---|---|---|
@@ -111,10 +123,10 @@ También puedes usar las tablas base `fact_ventas`, `dim_tiempo`, `dim_cliente`,
 | Desempeño por sucursal | Bar | `v_ventas_sucursal`: `nombre_sucursal` | `SUM(venta_neta)` y `AVG(ticket_promedio)` |
 | Ventas por segmento | Bar o Pie | `v_ventas_segmento`: `segmento` | `SUM(venta_neta)` |
 
-### 4. Dashboard y filtros
+### 5. Dashboard y filtros
 
 1. `Dashboards` → `+ Dashboard` → nombre `Sales Analytics`.
-2. Arrastra los 4 gráficos.
+2. Arrastra las 6 tarjetas KPI y los 4 gráficos.
 3. Agrega filtros nativos sobre `dim_sucursal.nombre_sucursal`, `dim_producto.categoria`, `dim_cliente.segmento` y `dim_tiempo.fecha`.
 4. Guarda y publica.
 

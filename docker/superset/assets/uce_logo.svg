@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="260" height="56" viewBox="0 0 260 56" role="img" aria-label="Sales Analytics UCE">
+  <rect x="0" y="0" width="56" height="56" rx="10" fill="#0033A0"/>
+  <path d="M0 56 L56 0 L56 18 L18 56 Z" fill="#CE1126"/>
+  <text x="10" y="37" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#FFFFFF" letter-spacing="1">UCE</text>
+  <text x="68" y="26" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="700" fill="#0033A0">Sales Analytics</text>
+  <text x="68" y="44" font-family="Arial, Helvetica, sans-serif" font-size="9.5" font-weight="600" fill="#CE1126" letter-spacing="1.6">UNIVERSIDAD CENTRAL DEL ECUADOR</text>
+</svg>

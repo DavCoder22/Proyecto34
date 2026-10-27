@@ -199,7 +199,7 @@ cp .env.example .env
 docker compose --env-file .env -f docker/docker-compose.superset.yml up -d --build
 ```
 
-Acceder a `http://IP_DEL_SERVIDOR:8088` (por defecto `admin` / `admin`). El contenedor `etl` carga el DW en PostgreSQL antes de arrancar Superset, y Superset crea automáticamente el dashboard `Sales Analytics` con sus 4 gráficos. Para recargar datos:
+Acceder a `http://IP_DEL_SERVIDOR:8088` (por defecto `admin` / `admin`). El contenedor `etl` carga el DW en PostgreSQL antes de arrancar Superset, y Superset crea automáticamente el dashboard `Sales Analytics` con 6 tarjetas KPI y 4 gráficos. Para recargar datos:
 
 ```bash
 docker compose --env-file .env -f docker/docker-compose.superset.yml run --rm etl
@@ -220,19 +220,32 @@ Desde la raíz del proyecto, ejecutar `python 02_etl/main.py` (o `run_etl.bat` e
 
 El notebook `02_etl/01_etl_pipeline.ipynb` ejecuta el mismo pipeline y muestra los cuatro indicadores: ingresos, unidades, margen bruto y transacciones.
 
-Para generar una visualización local sin configurar un servidor, ejecutar `python 04_dashboard/build_dashboard.py` y abrir `04_dashboard/dashboard.html`. El HTML contiene tarjetas de los cuatro indicadores y gráficos de evolución, categoría, sucursal y segmento. Para una demo con filtros, usar Superset conectado a PostgreSQL (ver [`deploy/SUPERSET_DEPLOY.md`](deploy/SUPERSET_DEPLOY.md)) o Power BI con `03_dw/dw.db`.
+Para generar una visualización local sin configurar un servidor, ejecutar `python 04_dashboard/build_dashboard.py` y abrir `04_dashboard/dashboard.html`. El HTML contiene seis tarjetas de indicadores (ingresos, unidades, margen, transacciones, ticket promedio y margen %) y gráficos de evolución, categoría, sucursal y segmento. Para una demo interactiva, usar Superset conectado a PostgreSQL (ver [`deploy/SUPERSET_DEPLOY.md`](deploy/SUPERSET_DEPLOY.md)) o Power BI con `03_dw/dw.db`.
 
 ---
 
 ## Flujo de Demostración
 
 1. **Jupyter Notebook** — Evidencia del ETL: lectura, nulos, duplicados, homologación, validación FK, reglas de negocio y carga a PostgreSQL.
-2. **Apache Superset** — Conclusión: Dashboard `Sales Analytics` con 4 KPIs y filtros interactivos. Se abre en su propia URL (puerto `8088` en local o `8008` en Northflank).
+2. **Apache Superset** — Conclusión: Dashboard `Sales Analytics` con 6 tarjetas KPI y 4 gráficos analíticos. Se abre en su propia URL (puerto `8088` en local o `8008` en Northflank).
 3. **Northflank / Docker** — Evidenciar los servicios funcionando: Jupyter, PostgreSQL y Superset en direcciones separadas.
 
 ---
 
 ## KPIs del Dashboard
+
+### Tarjetas de indicadores consolidados
+
+| Indicador | Expresión | Justificación analítica |
+|---|---|---|
+| Ingresos Netos | `SUM(venta_neta)` | Dimensión económica del negocio integrado |
+| Unidades Vendidas | `SUM(cantidad)` | Volumen físico independiente del precio |
+| Margen Bruto | `SUM(margen)` | Rentabilidad absoluta del universo validado |
+| Transacciones | `COUNT(DISTINCT id_venta)` | Actividad comercial real, sin doble conteo |
+| Ticket Promedio | `SUM(venta_neta) / COUNT(DISTINCT id_venta)` | Valor medio por venta; evita sesgo por líneas |
+| Margen % | `SUM(margen) / SUM(venta_neta)` | Eficiencia relativa comparable entre periodos |
+
+### Gráficos analíticos
 
 | KPI | Descripción | Uso Gerencial |
 |---|---|---|
@@ -241,7 +254,7 @@ Para generar una visualización local sin configurar un servidor, ejecutar `pyth
 | Desempeño por Sucursal | Ranking + ticket promedio | Evaluar gestión comercial |
 | Ventas por Segmento | Contribución por segmento | Dirigir campañas y fidelización |
 
-**Filtros:** Fecha · Sucursal · Categoría · Segmento
+**Identidad visual:** tema institucional UCE (azul cobalto y rojo escarlata), logo propio y paleta `uceColors` en todos los gráficos.
 
 ---
 

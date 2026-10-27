@@ -2,6 +2,7 @@
 -- KPI 1: Evolucion de ventas por mes
 CREATE VIEW IF NOT EXISTS v_ventas_mes AS
 SELECT t.anio, t.mes, t.mes_nombre, t.trimestre,
+       date(t.anio || '-' || printf('%02d', t.mes) || '-01') AS fecha,
        SUM(f.venta_neta) AS venta_neta,
        SUM(f.cantidad) AS unidades,
        COUNT(DISTINCT f.id_venta) AS num_ventas
@@ -42,3 +43,13 @@ GROUP BY c.segmento;
 CREATE VIEW IF NOT EXISTS v_ventas_canal AS
 SELECT f.canal_venta, SUM(f.venta_neta) AS venta_neta, COUNT(*) AS lineas
 FROM FactVentas f GROUP BY f.canal_venta;
+
+-- KPIs consolidados para tarjetas del dashboard
+CREATE VIEW IF NOT EXISTS v_kpis_consolidados AS
+SELECT SUM(venta_neta) AS ingresos,
+       SUM(cantidad) AS unidades,
+       SUM(margen) AS margen,
+       COUNT(DISTINCT id_venta) AS transacciones,
+       SUM(venta_neta) * 1.0 / NULLIF(COUNT(DISTINCT id_venta), 0) AS ticket_promedio,
+       SUM(margen) * 1.0 / NULLIF(SUM(venta_neta), 0) AS margen_pct
+FROM FactVentas;

@@ -51,3 +51,12 @@ SELECT f.canal_venta,
        COUNT(*) AS lineas
 FROM fact_ventas f
 GROUP BY f.canal_venta;
+
+CREATE OR REPLACE VIEW v_kpis_consolidados AS
+SELECT SUM(venta_neta) AS ingresos,
+       SUM(cantidad) AS unidades,
+       SUM(margen) AS margen,
+       COUNT(DISTINCT id_venta) AS transacciones,
+       SUM(venta_neta) / NULLIF(COUNT(DISTINCT id_venta), 0) AS ticket_promedio,
+       SUM(margen) / NULLIF(SUM(venta_neta), 0) AS margen_pct
+FROM fact_ventas;

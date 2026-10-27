@@ -24,5 +24,9 @@ Control vs fuente: aplicar las mismas reglas (venta_neta = cantidad*precio*(1-de
 | Unidades vendidas | `SUM(cantidad)` | 13,817 |
 | Margen bruto | `SUM(margen)` | 1,966,780.12 |
 | Número de transacciones | `COUNT(DISTINCT id_venta)` | 3,587 |
+| Ticket promedio | `SUM(venta_neta) / COUNT(DISTINCT id_venta)` | 2,077.56 |
+| Margen % | `SUM(margen) / SUM(venta_neta)` | 26.39 % |
 
 El ticket promedio se calcula por transacción: primero se suman las líneas de cada `id_venta` y después se obtiene el promedio. Así no se sesga el resultado por ventas con más productos.
+
+Las mismas vistas existen en PostgreSQL (`04_dashboard/kpi_views_postgres.sql`) para que Apache Superset consuma el DW sin recalcular las reglas de negocio.

@@ -1,12 +1,14 @@
 """Crea el dashboard Sales Analytics en Superset a partir del DW PostgreSQL.
 
 Se ejecuta dentro del contenedor de Superset después de `superset init`.
-Es idempotente: si el dashboard ya existe, no hace nada.
+Es idempotente: reutiliza datasets, métricas y gráficos existentes y actualiza
+el dashboard con los KPIs y la disposición vigente.
 """
 import json
 import os
 import time
 import uuid
+from pathlib import Path
 
 from flask import g
 from sqlalchemy import inspect
@@ -45,6 +47,7 @@ FORCE = os.environ.get("SUPERSET_BOOTSTRAP_FORCE", "").strip().lower() in {
 }
 ADMIN_USERNAME = os.environ.get("SUPERSET_ADMIN_USER", "admin")
 SUM_VENTA_NETA = "SUM(venta_neta)"
+COLOR_SCHEME = "uceColors"
 
 DATASETS = {
     "v_ventas_mes": {
@@ -60,7 +63,62 @@ DATASETS = {
     "v_ventas_segmento": {
         "metrics": [("sum_venta_neta", SUM_VENTA_NETA)],
     },
+    "v_kpis_consolidados": {
+        "metrics": [
+            ("kpi_ingresos", "MAX(ingresos)"),
+            ("kpi_unidades", "MAX(unidades)"),
+            ("kpi_margen", "MAX(margen)"),
+            ("kpi_transacciones", "MAX(transacciones)"),
+            ("kpi_ticket_promedio", "MAX(ticket_promedio)"),
+            ("kpi_margen_pct", "MAX(margen_pct)"),
+        ],
+    },
 }
+
+KPI_CARDS = [
+    (
+        "Ingresos Netos",
+        "kpi_ingresos",
+        "$,.2f",
+        "USD · universo validado",
+        "CHART-KPI-INGRESOS",
+    ),
+    (
+        "Unidades Vendidas",
+        "kpi_unidades",
+        ",.0f",
+        "unidades · datos integrados",
+        "CHART-KPI-UNIDADES",
+    ),
+    (
+        "Margen Bruto",
+        "kpi_margen",
+        "$,.2f",
+        "rentabilidad absoluta",
+        "CHART-KPI-MARGEN",
+    ),
+    (
+        "Transacciones",
+        "kpi_transacciones",
+        ",.0f",
+        "ventas únicas",
+        "CHART-KPI-TRANSACCIONES",
+    ),
+    (
+        "Ticket Promedio",
+        "kpi_ticket_promedio",
+        "$,.2f",
+        "USD por transacción",
+        "CHART-KPI-TICKET",
+    ),
+    (
+        "Margen %",
+        "kpi_margen_pct",
+        ".2%",
+        "margen sobre ingresos netos",
+        "CHART-KPI-MARGEN-PCT",
+    ),
+]
 
 
 def _import_superset():
@@ -91,6 +149,7 @@ def _chart_uuid(name):
 def _wait_for_views(database, timeout=180):
     deadline = time.time() + timeout
     last_error = None
+    views_sql = Path("/app/kpi_views_postgres.sql")
     while time.time() < deadline:
         try:
             with database.get_sqla_engine_with_context() as engine:
@@ -101,6 +160,15 @@ def _wait_for_views(database, timeout=180):
                 missing = sorted(set(DATASETS) - names)
                 if not missing:
                     return schema
+                if views_sql.exists():
+                    print(
+                        "[bootstrap] Creando vistas KPI faltantes: "
+                        + ", ".join(missing)
+                    )
+                    with engine.begin() as connection:
+                        connection.exec_driver_sql(
+                            views_sql.read_text(encoding="utf-8")
+                        )
                 raise RuntimeError(f"Vistas pendientes: {', '.join(missing)}")
         except Exception as exc:  # pragma: no cover - depende del entorno
             last_error = exc
@@ -161,7 +229,7 @@ def _line_params(table):
         "adhoc_filters": [],
         "annotation_layers": [],
         "bottom_margin": "auto",
-        "color_scheme": "supersetColors",
+        "color_scheme": COLOR_SCHEME,
         "comparison_type": "values",
         "contribution": False,
         "datasource": f"{table.id}__table",
@@ -194,7 +262,7 @@ def _bar_params(table, groupby, x_label):
         "annotation_layers": [],
         "bar_stacked": False,
         "bottom_margin": "auto",
-        "color_scheme": "supersetColors",
+        "color_scheme": COLOR_SCHEME,
         "contribution": False,
         "datasource": f"{table.id}__table",
         "granularity_sqla": None,
@@ -210,6 +278,22 @@ def _bar_params(table, groupby, x_label):
         "x_axis_label": x_label,
         "y_axis_format": "SMART_NUMBER",
         "y_axis_label": "Ventas netas (USD)",
+    }
+
+
+def _big_number_params(table, metric, subheader, number_format):
+    return {
+        "adhoc_filters": [],
+        "datasource": f"{table.id}__table",
+        "header_font_size": 0.4,
+        "metric": metric,
+        "queryFields": {"metric": "metrics"},
+        "subheader": subheader,
+        "subheader_font_size": 0.125,
+        "time_range": "No filter",
+        "url_params": {},
+        "viz_type": "big_number_total",
+        "y_axis_format": number_format,
     }
 
 
@@ -239,13 +323,13 @@ def _get_slice(name, table, viz_type, params, admin):
     return slice_obj
 
 
-def _chart_component(component_id, slice_obj, row_id, width):
+def _chart_component(component_id, slice_obj, row_id, width, height=50):
     return {
         "children": [],
         "id": component_id,
         "meta": {
             "chartId": slice_obj.id,
-            "height": 50,
+            "height": height,
             "sliceName": slice_obj.slice_name,
             "uuid": str(slice_obj.uuid),
             "width": width,
@@ -255,8 +339,12 @@ def _chart_component(component_id, slice_obj, row_id, width):
     }
 
 
-def _create_dashboard(slices, admin):
-    line_slice, category_slice, branch_slice, segment_slice = slices
+def _create_dashboard(kpi_slices, chart_slices, admin, dashboard=None):
+    line_slice, category_slice, branch_slice, segment_slice = chart_slices
+    kpi_components = [
+        _chart_component(component_id, slice_obj, "ROW-KPI-1" if index < 3 else "ROW-KPI-2", 4, 28)
+        for index, (slice_obj, component_id) in enumerate(kpi_slices)
+    ]
     position = {
         "DASHBOARD_VERSION_KEY": "v2",
         "ROOT_ID": {
@@ -265,7 +353,7 @@ def _create_dashboard(slices, admin):
             "type": "ROOT",
         },
         "GRID_ID": {
-            "children": ["ROW-LINE", "ROW-BARS"],
+            "children": ["ROW-KPI-1", "ROW-KPI-2", "ROW-LINE", "ROW-BARS"],
             "id": "GRID_ID",
             "parents": ["ROOT_ID"],
             "type": "GRID",
@@ -274,6 +362,20 @@ def _create_dashboard(slices, admin):
             "id": "HEADER_ID",
             "meta": {"text": DASHBOARD_TITLE},
             "type": "HEADER",
+        },
+        "ROW-KPI-1": {
+            "children": [component["id"] for component in kpi_components[:3]],
+            "id": "ROW-KPI-1",
+            "meta": {"background": "BACKGROUND_TRANSPARENT"},
+            "parents": ["ROOT_ID", "GRID_ID"],
+            "type": "ROW",
+        },
+        "ROW-KPI-2": {
+            "children": [component["id"] for component in kpi_components[3:]],
+            "id": "ROW-KPI-2",
+            "meta": {"background": "BACKGROUND_TRANSPARENT"},
+            "parents": ["ROOT_ID", "GRID_ID"],
+            "type": "ROW",
         },
         "ROW-LINE": {
             "children": ["CHART-LINE"],
@@ -300,26 +402,35 @@ def _create_dashboard(slices, admin):
             "CHART-SEGMENT", segment_slice, "ROW-BARS", 4
         ),
     }
+    for component in kpi_components:
+        position[component["id"]] = component
+
     metadata = {
         "timed_refresh_immune_slices": [],
         "expanded_slices": {},
         "refresh_frequency": 0,
         "default_filters": "{}",
-        "color_scheme": "supersetColors",
+        "color_scheme": COLOR_SCHEME,
         "label_colors": {},
         "native_filter_configuration": [],
     }
-    dashboard = Dashboard(
-        dashboard_title=DASHBOARD_TITLE,
-        slug=DASHBOARD_SLUG,
-        position_json=json.dumps(position, indent=4),
-        json_metadata=json.dumps(metadata),
-        published=True,
-    )
-    dashboard.slices = list(slices)
+    if dashboard is None:
+        dashboard = Dashboard(
+            dashboard_title=DASHBOARD_TITLE,
+            slug=DASHBOARD_SLUG,
+        )
+        db.session.add(dashboard)
+
+    dashboard.dashboard_title = DASHBOARD_TITLE
+    dashboard.slug = DASHBOARD_SLUG
+    dashboard.position_json = json.dumps(position, indent=4)
+    dashboard.json_metadata = json.dumps(metadata)
+    dashboard.published = True
+    dashboard.slices = [
+        slice_obj for slice_obj, _ in kpi_slices
+    ] + list(chart_slices)
     if admin is not None:
         dashboard.owners = [admin]
-    db.session.add(dashboard)
     db.session.commit()
     return dashboard
 
@@ -339,13 +450,11 @@ def main():
         existing = (
             db.session.query(Dashboard).filter_by(slug=DASHBOARD_SLUG).first()
         )
-        if existing is not None and not FORCE:
-            print("[bootstrap] El dashboard Sales Analytics ya existe; se omite.")
-            return
-        if existing is not None:
+        if existing is not None and FORCE:
             print("[bootstrap] Eliminando dashboard anterior por SUPERSET_BOOTSTRAP_FORCE.")
             db.session.delete(existing)
             db.session.commit()
+            existing = None
 
         database = _get_database()
         schema = _wait_for_views(database)
@@ -353,6 +462,22 @@ def main():
         tables = {
             view: _get_dataset(database, schema, view) for view in DATASETS
         }
+
+        kpi_slices = []
+        for title, metric, number_format, subheader, component_id in KPI_CARDS:
+            slice_obj = _get_slice(
+                title,
+                tables["v_kpis_consolidados"],
+                "big_number_total",
+                _big_number_params(
+                    tables["v_kpis_consolidados"],
+                    metric,
+                    subheader,
+                    number_format,
+                ),
+                admin,
+            )
+            kpi_slices.append((slice_obj, component_id))
 
         line = _get_slice(
             "Evolución de Ventas",
@@ -384,8 +509,13 @@ def main():
         )
         db.session.commit()
 
-        _create_dashboard([line, category, branch, segment], admin)
-        print("[bootstrap] Dashboard Sales Analytics creado correctamente.")
+        _create_dashboard(
+            kpi_slices,
+            [line, category, branch, segment],
+            admin,
+            dashboard=existing,
+        )
+        print("[bootstrap] Dashboard Sales Analytics creado/actualizado correctamente.")
 
 
 if __name__ == "__main__":

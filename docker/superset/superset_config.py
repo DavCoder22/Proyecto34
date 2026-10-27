@@ -36,4 +36,44 @@ PREVENT_UNSAFE_DB_CONNECTIONS = False
 
 ROW_LIMIT = 5000
 SUPERSET_WEBSERVER_PORT = int(os.environ.get("SUPERSET_PORT", "8088"))
-APP_NAME = "PoC Sales Analytics"
+APP_NAME = os.environ.get("SUPERSET_APP_NAME", "Sales Analytics UCE")
+APP_ICON = "/static/assets/images/uce_logo.svg"
+FAVICONS = [{"href": "/static/assets/images/uce_favicon.svg"}]
+LOGO_TOOLTIP = "Sales Analytics · Universidad Central del Ecuador"
+LOGO_TARGET_PATH = "/"
+LOGO_RIGHT_TEXT = ""
+
+# Identidad visual UCE: rojo escarlata y azul cobalto.
+UCE_AZUL = "#0033A0"
+UCE_ROJO = "#CE1126"
+UCE_ORO = "#F2A900"
+UCE_VERDE = "#1E7B3C"
+
+THEME_OVERRIDES = {
+    "borderRadius": 6,
+    "colors": {
+        "primary": {"base": UCE_AZUL},
+        "secondary": {"base": UCE_ROJO},
+        "grayscale": {"base": "#1F2937"},
+    },
+}
+
+EXTRA_CATEGORICAL_COLOR_SCHEMES = [
+    {
+        "id": "uceColors",
+        "description": "Paleta UCE",
+        "isDiverging": False,
+        "colors": [
+            UCE_AZUL,
+            UCE_ROJO,
+            UCE_ORO,
+            UCE_VERDE,
+            "#4F81BD",
+            "#C0504D",
+            "#9BBB59",
+            "#8064A2",
+            "#4BACC6",
+            "#F79646",
+        ],
+    }
+]

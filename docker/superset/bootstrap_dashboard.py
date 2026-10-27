@@ -27,6 +27,107 @@ DASHBOARD_SLUG = "sales-analytics"
 DASHBOARD_TITLE = "Sales Analytics"
 DATABASE_NAME = os.environ.get("SUPERSET_DW_DATABASE_NAME", "PoC DW")
 
+DASHBOARD_CSS = """
+/* Tema empresarial UCE */
+body, .dashboard { background: #eef2f9 !important; }
+
+/* Barra superior */
+header#main-menu.top {
+  background: linear-gradient(90deg, #002b87 0%, #0033A0 60%, #0b49c9 100%) !important;
+  border-top: 4px solid #CE1126 !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .18) !important;
+}
+header#main-menu .navbar-brand img { height: 38px !important; width: auto !important; }
+header#main-menu .main-nav,
+header#main-menu .ant-menu { background: transparent !important; border-bottom: 0 !important; }
+header#main-menu .ant-menu-item a,
+header#main-menu .ant-menu-submenu-title,
+header#main-menu .ant-menu-item .anticon { color: #fff !important; font-weight: 600 !important; }
+header#main-menu .ant-menu-item-selected,
+header#main-menu .ant-menu-item:hover,
+header#main-menu .ant-menu-submenu-title:hover {
+  background: rgba(255, 255, 255, .14) !important;
+  border-bottom: 3px solid #CE1126 !important;
+}
+header#main-menu .ant-menu-item-selected a { color: #fff !important; }
+header#main-menu .ant-btn,
+header#main-menu .anticon { color: #fff !important; }
+header#main-menu .ant-btn-text:hover { background: rgba(255, 255, 255, .14) !important; }
+
+/* Encabezado del dashboard */
+.dashboard-header-container {
+  background: linear-gradient(90deg, #0033A0 0%, #0033A0 65%, #CE1126 100%) !important;
+  padding: 18px 24px 20px !important;
+  border-radius: 0 0 18px 18px !important;
+  box-shadow: 0 10px 26px rgba(0, 51, 160, .22) !important;
+}
+.dashboard-header-container .header-with-actions {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.dashboard-header-container .dynamic-title,
+.dashboard-header-container .editable-title,
+.dashboard-header-container .header-title {
+  color: #fff !important;
+  font-weight: 800 !important;
+  letter-spacing: .2px;
+}
+.dashboard-header-container .dynamic-title::after {
+  content: " · UCE";
+  color: #ffd7dc;
+  font-weight: 600;
+}
+.dashboard-header-container .ant-tag {
+  background: rgba(255, 255, 255, .18) !important;
+  color: #fff !important;
+  border: 0 !important;
+}
+.dashboard-header-container .ant-btn.superset-button,
+.dashboard-header-container .action-button {
+  background: #fff !important;
+  color: #0033A0 !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  font-weight: 700 !important;
+}
+.dashboard-header-container .ant-btn.superset-button:hover,
+.dashboard-header-container .action-button:hover { background: #eef3ff !important; }
+.dashboard-header-container .ant-btn.superset-button .anticon,
+.dashboard-header-container .ant-btn.action-button .anticon { color: #0033A0 !important; }
+.dashboard-header-container .fave-unfave-icon,
+.dashboard-header-container .fave-unfave-icon span,
+.dashboard-header-container .anticon { color: #fff !important; }
+
+/* Lienzo y tarjetas */
+.dashboard-content { background: #eef2f9 !important; padding: 18px 24px 42px !important; }
+.dashboard-grid .grid-row { gap: 16px !important; }
+.dashboard-component-chart-holder {
+  background: #fff !important;
+  border: 1px solid #dbe2f0 !important;
+  border-top: 4px solid #0033A0 !important;
+  border-radius: 14px !important;
+  box-shadow: 0 8px 22px rgba(16, 32, 64, .08) !important;
+  overflow: hidden !important;
+}
+.dashboard-chart-id-5 .dashboard-component-chart-holder,
+.dashboard-chart-id-6 .dashboard-component-chart-holder,
+.dashboard-chart-id-7 .dashboard-component-chart-holder,
+.dashboard-chart-id-8 .dashboard-component-chart-holder,
+.dashboard-chart-id-9 .dashboard-component-chart-holder,
+.dashboard-chart-id-10 .dashboard-component-chart-holder { border-top-color: #CE1126 !important; }
+.dashboard-component-chart-holder:has(.header-line) { border-top-color: #CE1126 !important; }
+.dashboard-component-chart-holder .chart-container { padding: 10px 16px 14px !important; }
+.dashboard-component-chart-holder .header-line {
+  color: #0033A0 !important;
+  font-weight: 800 !important;
+  font-size: 1.55rem !important;
+}
+.dashboard-component-chart-holder .subheader-line { color: #64748b !important; }
+.dashboard-component-chart-holder .header-title { color: #0033A0 !important; font-weight: 700 !important; }
+.dashboard-component-chart-holder .slice_container { padding: 10px 14px !important; }
+.dashboard-component-chart-holder:hover { box-shadow: 0 12px 28px rgba(16, 32, 64, .14) !important; }
+"""
+
 
 def _normalize_postgres_url(value):
     value = value.strip()
@@ -425,6 +526,7 @@ def _create_dashboard(kpi_slices, chart_slices, admin, dashboard=None):
     dashboard.slug = DASHBOARD_SLUG
     dashboard.position_json = json.dumps(position, indent=4)
     dashboard.json_metadata = json.dumps(metadata)
+    dashboard.css = DASHBOARD_CSS
     dashboard.published = True
     dashboard.slices = [
         slice_obj for slice_obj, _ in kpi_slices

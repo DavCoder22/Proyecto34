@@ -1,0 +1,27 @@
+# Dashboard HTML estático (idéntico a la ejecución local)
+# Etapa 1: ejecutar el ETL y generar dashboard.html con el mapa provincial.
+FROM python:3.11-slim AS build
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir --only-binary=:all: -r /tmp/requirements.txt
+
+COPY 01_datos /app/01_datos
+COPY 02_etl /app/02_etl
+COPY 03_dw /app/03_dw
+COPY 04_dashboard /app/04_dashboard
+COPY 06_calidad /app/06_calidad
+
+RUN python 02_etl/main.py && python 04_dashboard/build_dashboard.py
+
+# Etapa 2: servir el HTML con nginx.
+FROM nginx:1.27-alpine
+
+COPY docker/nginx-dashboard.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/04_dashboard/dashboard.html /usr/share/nginx/html/index.html
+
+EXPOSE 8080

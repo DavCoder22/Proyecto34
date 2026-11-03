@@ -469,58 +469,6 @@ def _bar_params(table, groupby, x_label):
     }
 
 
-def _map_params(table):
-    return {
-        "adhoc_filters": [],
-        "autozoom": True,
-        "datasource": f"{table.id}__table",
-        "extruded": False,
-        "fill_color_picker": {"r": 0, "g": 51, "b": 160, "a": 0.85},
-        "filled": True,
-        "filter_nulls": True,
-        "granularity_sqla": None,
-        "legend_format": "SMART_NUMBER",
-        "legend_position": "tr",
-        "js_columns": ["provincia"],
-        "js_tooltip": "d => `${d.object.extraProps.provincia}: ${d.object.sum_venta_neta}`",
-        "line_column": "geom",
-        "line_type": "json",
-        "line_width": 1,
-        "line_width_unit": "pixels",
-        "linear_color_scheme": [
-            "#dbe4f0",
-            "#b3c9ea",
-            "#7fa3dc",
-            "#4f7fc9",
-            "#2359b1",
-            "#0033A0",
-        ],
-        "mapbox_style": "mapbox://styles/mapbox/light-v9",
-        "metric": "sum_venta_neta",
-        "multiplier": 1,
-        "num_buckets": 5,
-        "opacity": 85,
-        "point_radius_fixed": {"type": "fix", "value": 0},
-        "reverse_long_lat": False,
-        "row_limit": 1000,
-        "stroked": True,
-        "stroke_color_picker": {"r": 255, "g": 255, "b": 255, "a": 1},
-        "table_filter": False,
-        "time_range": "No filter",
-        "toggle_polygons": True,
-        "url_params": {},
-        "viewport": {
-            "altitude": 1.5,
-            "bearing": 0,
-            "latitude": -1.5,
-            "longitude": -78.5,
-            "pitch": 0,
-            "zoom": 6,
-        },
-        "viz_type": "deck_polygon",
-    }
-
-
 def _pie_params(table, groupby):
     return {
         "adhoc_filters": [],
@@ -786,11 +734,11 @@ def main():
             _bar_params(tables["v_ventas_segmento"], "segmento", "Segmento"),
             admin,
         )
-        province_map = _get_slice(
+        province_chart = _get_slice(
             "Ventas por Provincia",
             tables["v_ventas_provincia"],
-            "deck_polygon",
-            _map_params(tables["v_ventas_provincia"]),
+            "dist_bar",
+            _bar_params(tables["v_ventas_provincia"], "provincia", "Provincia"),
             admin,
         )
         participation = _get_slice(
@@ -804,7 +752,7 @@ def main():
 
         _create_dashboard(
             kpi_slices,
-            [line, category, branch, segment, province_map, participation],
+            [line, category, branch, segment, province_chart, participation],
             admin,
             dashboard=existing,
         )

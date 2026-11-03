@@ -1,5 +1,7 @@
 # Desplegar Apache Superset en Northflank (proyecto34)
 
+> Para el dashboard idéntico al local (mapa fijo y provincias clicables), usa [`NORTHFLANK_DASHBOARD.md`](NORTHFLANK_DASHBOARD.md). Superset no puede mostrar ese mapa sin un token de Mapbox y su mapa deck.gl es interactivo.
+
 Guía para el escenario real de la PoC:
 
 - **Neon** como base de datos.
@@ -27,7 +29,7 @@ El job ETL crea en Neon:
 - Mapa provincial: `dim_provincia_mapa` (polígonos de las provincias).
 - Vistas del dashboard: `v_ventas_mes`, `v_ventas_categoria`, `v_ventas_sucursal`, `v_ventas_segmento`, `v_ventas_provincia`.
 
-El servicio Superset se conecta a Neon, crea el dashboard `Sales Analytics` y publica la URL de acceso.
+El servicio Superset se conecta a Neon, crea el dashboard `Sales Analytics` con tarjetas, evolución, ranking provincial, pastel de participación, sucursal y segmento, y publica la URL de acceso.
 
 ## Datos del proyecto
 

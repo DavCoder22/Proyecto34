@@ -45,6 +45,8 @@ PoC_Analisis_Comercial/
 ├── docker/                  # Dockerfiles, Superset y compose
 │   ├── Dockerfile           # Jupyter + evidencia ETL
 │   ├── Dockerfile.etl       # Carga del DW a PostgreSQL
+│   ├── Dockerfile.dashboard # Dashboard HTML estático para la nube
+│   ├── nginx-dashboard.conf # Configuración nginx del dashboard HTML
 │   ├── docker-compose.yml   # Jupyter + Superset + PostgreSQL
 │   ├── docker-compose.superset.yml # Stack Superset independiente
 │   └── superset/            # Imagen/config de Apache Superset
@@ -149,6 +151,8 @@ En local, el servicio `jupyter` usa `ETL_TARGET=sqlite` y escribe solo `03_dw/dw
 
 ### Opción B: Desplegar en Northflank (Neon + job ETL + Superset)
 
+> Para ver en la nube **el dashboard HTML idéntico al local** (mapa fijo, provincias clicables, sin zoom ni Mapbox), sigue [`deploy/NORTHFLANK_DASHBOARD.md`](deploy/NORTHFLANK_DASHBOARD.md). Superset es el dashboard alternativo con tarjetas y gráficos; su mapa deck.gl requiere un token de Mapbox y es interactivo.
+
 1. Ir a [northflank.com](https://northflank.com) → proyecto `proyecto34`.
 2. Conectar el repositorio `https://github.com/DavCoder22/Proyecto34.git`.
 3. Crear el secret group `proyecto34-secrets` con `DATABASE_URL` de Neon, `ETL_TARGET=postgres`, `SUPERSET_SECRET_KEY`, `SUPERSET_ADMIN_*` y `SUPERSET_PORT=8008`.
@@ -159,6 +163,17 @@ En local, el servicio `jupyter` usa `ETL_TARGET=sqlite` y escribe solo `03_dw/dw
 En la nube solo hay **un job (ETL) + un servicio adicional (Superset)**; no se necesita addon PostgreSQL ni Jupyter para el dashboard. El job carga en Neon los datos originales (`stg_*`), transformados (`clean_*`) y el DW que consume Superset.
 
 Guía detallada para Northflank: [`deploy/NORTHFLANK_SUPERSET.md`](deploy/NORTHFLANK_SUPERSET.md). Guía general de despliegue: [`deploy/SUPERSET_DEPLOY.md`](deploy/SUPERSET_DEPLOY.md).
+
+#### Dashboard HTML en Northflank (idéntico a local)
+
+1. **Create new → Service → Combined service**.
+2. Nombre: `proyecto34-dashboard`.
+3. Repositorio: `DavCoder22/Proyecto34`, rama `main`, build type **Dockerfile**.
+4. Dockerfile path: `docker/Dockerfile.dashboard`.
+5. Puerto público: `8080`, health check `GET /`.
+6. No requiere variables de entorno: el build ejecuta el ETL y genera el HTML.
+
+El servicio sirve el mismo `dashboard.html` que abres en local, con el mapa SVG fijo y las provincias clicables. Guía completa: [`deploy/NORTHFLANK_DASHBOARD.md`](deploy/NORTHFLANK_DASHBOARD.md).
 
 #### Jupyter opcional en la nube
 
@@ -223,7 +238,7 @@ Desde la raíz del proyecto, ejecutar `python 02_etl/main.py` (o `run_etl.bat` e
 
 El notebook `02_etl/01_etl_pipeline.ipynb` ejecuta el mismo pipeline y muestra los cuatro indicadores: ingresos, unidades, margen bruto y transacciones.
 
-Para generar una visualización local sin configurar un servidor, ejecutar `python 04_dashboard/build_dashboard.py` y abrir `04_dashboard/dashboard.html`. El HTML contiene seis tarjetas de indicadores (ingresos, unidades, margen, transacciones, ticket promedio y margen %), un **mapa coroplético de las 24 provincias** del Ecuador para filtrar la vista con un clic, ranking provincial, participación porcentual en pastel (categoría, canal, método de pago o segmento), top de productos, desempeño por sucursal y ventas por segmento. También acepta `dashboard.html?provincia=Pichincha` para abrir una provincia preseleccionada. El dashboard de Superset ahora incluye además el mapa provincial (`v_ventas_provincia`) y el pastel de participación; para verlo en la nube, redespliega el servicio Superset (el bootstrap crea la tabla y la vista del mapa si faltan). Para una demo interactiva, usar Superset conectado a PostgreSQL (ver [`deploy/SUPERSET_DEPLOY.md`](deploy/SUPERSET_DEPLOY.md)) o Power BI con `03_dw/dw.db`.
+Para generar una visualización local sin configurar un servidor, ejecutar `python 04_dashboard/build_dashboard.py` y abrir `04_dashboard/dashboard.html`. El HTML contiene seis tarjetas de indicadores (ingresos, unidades, margen, transacciones, ticket promedio y margen %), un **mapa coroplético de las 24 provincias** del Ecuador para filtrar la vista con un clic, ranking provincial, participación porcentual en pastel (categoría, canal, método de pago o segmento), top de productos, desempeño por sucursal y ventas por segmento. También acepta `dashboard.html?provincia=Pichincha` para abrir una provincia preseleccionada. El dashboard de Superset incluye un ranking provincial (`v_ventas_provincia`) y el pastel de participación; su mapa deck.gl requiere Mapbox y es interactivo. Para el mapa fijo con provincias clicables, usa el dashboard HTML (`docker/Dockerfile.dashboard`), que se ve igual que en local. Para una demo interactiva, usar Superset conectado a PostgreSQL (ver [`deploy/SUPERSET_DEPLOY.md`](deploy/SUPERSET_DEPLOY.md)) o Power BI con `03_dw/dw.db`.
 
 ---
 

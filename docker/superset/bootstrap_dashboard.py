@@ -164,6 +164,9 @@ DATASETS = {
     "v_ventas_segmento": {
         "metrics": [("sum_venta_neta", SUM_VENTA_NETA)],
     },
+    "v_ventas_provincia": {
+        "metrics": [("sum_venta_neta", SUM_VENTA_NETA)],
+    },
     "v_kpis_consolidados": {
         "metrics": [
             ("kpi_ingresos", "MAX(ingresos)"),
@@ -382,6 +385,85 @@ def _bar_params(table, groupby, x_label):
     }
 
 
+def _map_params(table):
+    return {
+        "adhoc_filters": [],
+        "autozoom": True,
+        "datasource": f"{table.id}__table",
+        "extruded": False,
+        "fill_color_picker": {"r": 0, "g": 51, "b": 160, "a": 0.85},
+        "filled": True,
+        "filter_nulls": True,
+        "granularity_sqla": None,
+        "legend_format": "SMART_NUMBER",
+        "legend_position": "tr",
+        "js_columns": ["provincia"],
+        "js_tooltip": "d => `${d.object.extraProps.provincia}: ${d.object.sum_venta_neta}`",
+        "line_column": "geom",
+        "line_type": "json",
+        "line_width": 1,
+        "line_width_unit": "pixels",
+        "linear_color_scheme": [
+            "#dbe4f0",
+            "#b3c9ea",
+            "#7fa3dc",
+            "#4f7fc9",
+            "#2359b1",
+            "#0033A0",
+        ],
+        "mapbox_style": "mapbox://styles/mapbox/light-v9",
+        "metric": "sum_venta_neta",
+        "multiplier": 1,
+        "num_buckets": 5,
+        "opacity": 85,
+        "point_radius_fixed": {"type": "fix", "value": 0},
+        "reverse_long_lat": False,
+        "row_limit": 1000,
+        "stroked": True,
+        "stroke_color_picker": {"r": 255, "g": 255, "b": 255, "a": 1},
+        "table_filter": False,
+        "time_range": "No filter",
+        "toggle_polygons": True,
+        "url_params": {},
+        "viewport": {
+            "altitude": 1.5,
+            "bearing": 0,
+            "latitude": -1.5,
+            "longitude": -78.5,
+            "pitch": 0,
+            "zoom": 6,
+        },
+        "viz_type": "deck_polygon",
+    }
+
+
+def _pie_params(table, groupby):
+    return {
+        "adhoc_filters": [],
+        "color_scheme": COLOR_SCHEME,
+        "datasource": f"{table.id}__table",
+        "donut": True,
+        "granularity_sqla": None,
+        "groupby": [groupby],
+        "innerRadius": 40,
+        "label_type": "key_percent",
+        "labels_outside": True,
+        "legendOrientation": "right",
+        "legendType": "scroll",
+        "metric": "sum_venta_neta",
+        "number_format": "SMART_NUMBER",
+        "outerRadius": 70,
+        "row_limit": 100,
+        "show_labels": True,
+        "show_legend": True,
+        "show_labels_threshold": 3,
+        "show_total": True,
+        "time_range": "No filter",
+        "url_params": {},
+        "viz_type": "pie",
+    }
+
+
 def _big_number_params(table, metric, subheader, number_format):
     return {
         "adhoc_filters": [],
@@ -441,7 +523,7 @@ def _chart_component(component_id, slice_obj, row_id, width, height=50):
 
 
 def _create_dashboard(kpi_slices, chart_slices, admin, dashboard=None):
-    line_slice, category_slice, branch_slice, segment_slice = chart_slices
+    line_slice, category_slice, branch_slice, segment_slice, map_slice, pie_slice = chart_slices
     kpi_components = [
         _chart_component(component_id, slice_obj, "ROW-KPI-1" if index < 3 else "ROW-KPI-2", 4, 28)
         for index, (slice_obj, component_id) in enumerate(kpi_slices)
@@ -454,7 +536,7 @@ def _create_dashboard(kpi_slices, chart_slices, admin, dashboard=None):
             "type": "ROOT",
         },
         "GRID_ID": {
-            "children": ["ROW-KPI-1", "ROW-KPI-2", "ROW-LINE", "ROW-BARS"],
+            "children": ["ROW-KPI-1", "ROW-KPI-2", "ROW-LINE", "ROW-MAP", "ROW-BARS"],
             "id": "GRID_ID",
             "parents": ["ROOT_ID"],
             "type": "GRID",
@@ -486,6 +568,15 @@ def _create_dashboard(kpi_slices, chart_slices, admin, dashboard=None):
             "type": "ROW",
         },
         "CHART-LINE": _chart_component("CHART-LINE", line_slice, "ROW-LINE", 12),
+        "ROW-MAP": {
+            "children": ["CHART-MAP", "CHART-PIE"],
+            "id": "ROW-MAP",
+            "meta": {"background": "BACKGROUND_TRANSPARENT"},
+            "parents": ["ROOT_ID", "GRID_ID"],
+            "type": "ROW",
+        },
+        "CHART-MAP": _chart_component("CHART-MAP", map_slice, "ROW-MAP", 7, 90),
+        "CHART-PIE": _chart_component("CHART-PIE", pie_slice, "ROW-MAP", 5, 90),
         "ROW-BARS": {
             "children": ["CHART-CATEGORY", "CHART-BRANCH", "CHART-SEGMENT"],
             "id": "ROW-BARS",
@@ -609,11 +700,25 @@ def main():
             _bar_params(tables["v_ventas_segmento"], "segmento", "Segmento"),
             admin,
         )
+        province_map = _get_slice(
+            "Ventas por Provincia",
+            tables["v_ventas_provincia"],
+            "deck_polygon",
+            _map_params(tables["v_ventas_provincia"]),
+            admin,
+        )
+        participation = _get_slice(
+            "Participación por Categoría",
+            tables["v_ventas_categoria"],
+            "pie",
+            _pie_params(tables["v_ventas_categoria"], "categoria"),
+            admin,
+        )
         db.session.commit()
 
         _create_dashboard(
             kpi_slices,
-            [line, category, branch, segment],
+            [line, category, branch, segment, province_map, participation],
             admin,
             dashboard=existing,
         )

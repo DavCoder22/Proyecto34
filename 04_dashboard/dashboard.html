@@ -304,6 +304,8 @@ const dimensions = {
   segmento: {field: 'segmento', label: 'Segmento'}
 };
 const state = {provincia: null, dimension: 'categoria'};
+const provinceAlias = {'Santo Domingo': 'Santo Domingo de los Tsáchilas'};
+const provinceKey = name => provinceAlias[name] || name;
 const provData = Object.fromEntries(data.provincias.map(p => [p.provincia, p]));
 const provinceValues = data.provincias.map(p => p.venta_neta);
 const maxProvince = Math.max(...provinceValues, 1);
@@ -444,7 +446,7 @@ function updateSegments(scope) {
 
 function paintMap() {
   document.querySelectorAll('#mapa .provincia[data-provincia]').forEach(path => {
-    const name = path.dataset.provincia;
+    const name = provinceKey(path.dataset.provincia);
     const info = provData[name];
     if (!info) {
       path.classList.add('sin-datos');
@@ -562,7 +564,7 @@ document.getElementById('dimension').addEventListener('change', event => {
 });
 
 document.querySelectorAll('#mapa .provincia[data-provincia]').forEach(path => {
-  const name = path.dataset.provincia;
+  const name = provinceKey(path.dataset.provincia);
   if (!provData[name]) return;
   path.addEventListener('click', () => applyProvince(name));
   path.addEventListener('mousemove', event => showTooltip(event, name));

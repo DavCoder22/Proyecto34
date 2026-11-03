@@ -24,7 +24,8 @@ El job ETL crea en Neon:
 - Datos originales: `stg_clientes`, `stg_sucursales`, `stg_productos`, `stg_ventas`.
 - Datos transformados: `clean_clientes`, `clean_sucursales`, `clean_productos`, `clean_ventas`.
 - Data warehouse: `dim_tiempo`, `dim_cliente`, `dim_producto`, `dim_sucursal`, `fact_ventas`.
-- Vistas del dashboard: `v_ventas_mes`, `v_ventas_categoria`, `v_ventas_sucursal`, `v_ventas_segmento`.
+- Mapa provincial: `dim_provincia_mapa` (polígonos de las provincias).
+- Vistas del dashboard: `v_ventas_mes`, `v_ventas_categoria`, `v_ventas_sucursal`, `v_ventas_segmento`, `v_ventas_provincia`.
 
 El servicio Superset se conecta a Neon, crea el dashboard `Sales Analytics` y publica la URL de acceso.
 
@@ -129,6 +130,8 @@ Este job carga Neon. Debe ejecutarse **antes** de abrir el dashboard.
 8. Build context: `.` (raíz del repositorio).
 9. Runtime environment: enlaza el secret group `proyecto34-secrets`.
 10. Crea el job y ejecútalo con **Run job**. Si el job ya existe, solo actualiza el repositorio y vuelve a ejecutarlo.
+
+> Cada vez que actualices el repositorio, ejecuta primero el job ETL y después reinicia el servicio Superset. Así se crea `dim_provincia_mapa`, se refresca `v_ventas_provincia` y el bootstrap agrega el mapa provincial y el pastel de participación al dashboard.
 
 El Dockerfile ya define por defecto:
 

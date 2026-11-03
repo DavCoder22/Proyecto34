@@ -60,3 +60,19 @@ SELECT SUM(venta_neta) AS ingresos,
        SUM(venta_neta) / NULLIF(COUNT(DISTINCT id_venta), 0) AS ticket_promedio,
        SUM(margen) / NULLIF(SUM(venta_neta), 0) AS margen_pct
 FROM fact_ventas;
+
+-- Mapa coropletico provincial (poligono en JSON para deck.gl)
+DROP VIEW IF EXISTS v_ventas_provincia CASCADE;
+CREATE OR REPLACE VIEW v_ventas_provincia AS
+SELECT m.provincia,
+       m.polygon AS geom,
+       m.lat,
+       m.lon,
+       COALESCE(SUM(f.venta_neta), 0) AS venta_neta,
+       COALESCE(SUM(f.cantidad), 0) AS unidades,
+       COALESCE(SUM(f.margen), 0) AS margen,
+       COUNT(DISTINCT f.id_venta) AS num_ventas
+FROM dim_provincia_mapa m
+LEFT JOIN dim_cliente c ON c.provincia = m.provincia
+LEFT JOIN fact_ventas f ON f.id_cliente = c.id_cliente
+GROUP BY m.provincia, m.polygon, m.lat, m.lon;

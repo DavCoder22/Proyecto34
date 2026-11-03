@@ -3,6 +3,17 @@ import pandas as pd
 import numpy as np
 from config import DATE_COLS, DESCUENTO_COLS
 
+def drop_empty_columns(df):
+    """Elimina columnas sin nombre o completamente vacias (artefactos de CSV/Excel)."""
+    df = df.copy()
+    df.columns = [str(column).strip() for column in df.columns]
+    drop = [
+        column for column in df.columns
+        if column.startswith("Unnamed:") or df[column].isna().mean() >= 0.99
+    ]
+    return df.drop(columns=drop)
+
+
 def to_utf8_str(df):
     for c in df.select_dtypes(include="object").columns:
         df[c] = df[c].astype(str).str.strip()
@@ -45,6 +56,7 @@ def fill_nulls(df, defaults):
     return df
 
 def clean_entity(name, df):
+    df = drop_empty_columns(df)
     df = to_utf8_str(df)
     from config import PK
     if name == "ventas":

@@ -71,3 +71,11 @@ CREATE INDEX IF NOT EXISTS idx_fact_ventas_cliente ON fact_ventas(id_cliente);
 CREATE INDEX IF NOT EXISTS idx_fact_ventas_producto ON fact_ventas(id_producto);
 CREATE INDEX IF NOT EXISTS idx_fact_ventas_sucursal ON fact_ventas(id_sucursal);
 CREATE INDEX IF NOT EXISTS idx_fact_ventas_idventa ON fact_ventas(id_venta);
+
+-- Mapa provincial para el dashboard de Superset
+CREATE TABLE IF NOT EXISTS dim_provincia_mapa (
+    provincia VARCHAR(80) PRIMARY KEY,
+    polygon TEXT NOT NULL,
+    lat NUMERIC(10,6),
+    lon NUMERIC(10,6)
+);

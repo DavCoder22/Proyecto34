@@ -1,4 +1,5 @@
 """Carga al Data Warehouse: SQLite siempre y PostgreSQL si DATABASE_URL está definida."""
+import json
 import os
 import sqlite3
 
@@ -19,6 +20,54 @@ FACT_COLS = [
     "cantidad", "precio_unitario", "descuento_pct", "venta_bruta", "venta_neta",
     "costo_total", "margen", "canal_venta", "metodo_pago",
 ]
+
+PROVINCE_GEOJSON = ROOT / "04_dashboard" / "data" / "provincias.geojson"
+PROVINCE_ALIASES = {"Santo Domingo": "Santo Domingo de los Tsáchilas"}
+
+
+def _ring_area(ring):
+    area = 0.0
+    pairs = zip(ring, ring[1:] + ring[:1])
+    for (x1, y1), (x2, y2) in pairs:
+        area += x1 * y2 - x2 * y1
+    return abs(area) / 2.0
+
+
+def _province_map_frame():
+    """Extrae el poligono principal de cada provincia para el mapa de Superset."""
+    if not PROVINCE_GEOJSON.exists():
+        return pd.DataFrame(columns=["provincia", "polygon", "lat", "lon"])
+
+    features = json.loads(PROVINCE_GEOJSON.read_text(encoding="utf-8"))["features"]
+    rows = []
+    for feature in features:
+        name = feature["properties"]["province"]
+        if name == "Galápagos":
+            continue
+        name = PROVINCE_ALIASES.get(name, name)
+        geometry = feature.get("geometry") or {}
+        rings = []
+        if geometry.get("type") == "Polygon":
+            rings = geometry.get("coordinates") or []
+        else:
+            for polygon in geometry.get("coordinates") or []:
+                rings.extend(polygon)
+        if not rings:
+            continue
+        ring = max(rings, key=_ring_area)
+        points = [
+            [round(float(point[0]), 5), round(float(point[1]), 5)]
+            for point in ring
+        ]
+        if len(points) < 3:
+            continue
+        rows.append({
+            "provincia": name,
+            "polygon": json.dumps(points, separators=(",", ":")),
+            "lat": round(sum(point[1] for point in points) / len(points), 6),
+            "lon": round(sum(point[0] for point in points) / len(points), 6),
+        })
+    return pd.DataFrame(rows)
 
 
 def build_dim_tiempo(ventas):
@@ -213,6 +262,23 @@ def _write_evidence_tables(engine, df_dict):
         )
 
 
+def _write_province_map(engine):
+    frame = _province_map_frame()
+    if frame.empty:
+        print("[LOAD][WARN] No se encontro el GeoJSON de provincias; se omite dim_provincia_mapa")
+        return
+    with engine.begin() as conn:
+        conn.exec_driver_sql("TRUNCATE TABLE dim_provincia_mapa")
+    frame.to_sql(
+        "dim_provincia_mapa",
+        engine,
+        index=False,
+        if_exists="append",
+        method="multi",
+        chunksize=100,
+    )
+
+
 def _apply_postgres_views(engine):
     views_path = ROOT / "04_dashboard" / "kpi_views_postgres.sql"
     if not views_path.exists():
@@ -240,6 +306,7 @@ def _load_postgres(frames, df_dict):
         _reset_postgres_schema(engine)
         _write_postgres_frames(engine, frames)
         _write_evidence_tables(engine, df_dict)
+        _write_province_map(engine)
         _apply_postgres_views(engine)
         _sync_postgres_sequences(engine)
         safe_url = database_url.split("@")[-1]

@@ -54,6 +54,7 @@ Ir a `Data` → `Datasets` → `+ Dataset`. Se recomiendan las vistas KPI porque
 | `v_ventas_categoria` | Vista PostgreSQL | Categoría + % de participación |
 | `v_ventas_sucursal` | Vista PostgreSQL | Ranking + ticket promedio |
 | `v_ventas_segmento` | Vista PostgreSQL | Segmento + ticket promedio |
+| `v_ventas_provincia` | Vista PostgreSQL | Mapa provincial (`geom`) + venta neta |
 | `v_kpis_consolidados` | Vista PostgreSQL | Tarjetas de indicadores consolidados |
 | `fact_ventas` | Tabla | Medidas base y filtros |
 | `dim_tiempo` | Tabla | Filtros por fecha/año/mes/trimestre |

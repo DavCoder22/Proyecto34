@@ -131,7 +131,7 @@ Este job carga Neon. Debe ejecutarse **antes** de abrir el dashboard.
 9. Runtime environment: enlaza el secret group `proyecto34-secrets`.
 10. Crea el job y ejecútalo con **Run job**. Si el job ya existe, solo actualiza el repositorio y vuelve a ejecutarlo.
 
-> Cada vez que actualices el repositorio, ejecuta primero el job ETL y después reinicia el servicio Superset. Así se crea `dim_provincia_mapa`, se refresca `v_ventas_provincia` y el bootstrap agrega el mapa provincial y el pastel de participación al dashboard.
+> Al actualizar el repositorio, **redespliega el servicio Superset**. El bootstrap crea `dim_provincia_mapa` y `v_ventas_provincia` si no existen, y agrega el mapa provincial y el pastel de participación. Si además cambian los datos, ejecuta primero el job ETL.
 
 El Dockerfile ya define por defecto:
 

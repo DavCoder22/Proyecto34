@@ -11,7 +11,7 @@ import uuid
 from pathlib import Path
 
 from flask import g
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 
 from superset.app import create_app
 
@@ -248,6 +248,90 @@ def _import_superset():
 
 def _chart_uuid(name):
     return str(uuid.uuid5(uuid.NAMESPACE_URL, f"poc-superset:{name}"))
+
+
+PROVINCE_GEOJSON = Path(__file__).with_name("provincias.geojson")
+PROVINCE_ALIASES = {"Santo Domingo": "Santo Domingo de los Tsáchilas"}
+
+
+def _ring_area(ring):
+    area = 0.0
+    for (x1, y1), (x2, y2) in zip(ring, ring[1:] + ring[:1]):
+        area += x1 * y2 - x2 * y1
+    return abs(area) / 2.0
+
+
+def _province_rows():
+    if not PROVINCE_GEOJSON.exists():
+        return []
+    features = json.loads(PROVINCE_GEOJSON.read_text(encoding="utf-8"))["features"]
+    rows = []
+    for feature in features:
+        name = feature["properties"]["province"]
+        if name == "Galápagos":
+            continue
+        name = PROVINCE_ALIASES.get(name, name)
+        geometry = feature.get("geometry") or {}
+        rings = []
+        if geometry.get("type") == "Polygon":
+            rings = geometry.get("coordinates") or []
+        else:
+            for polygon in geometry.get("coordinates") or []:
+                rings.extend(polygon)
+        if not rings:
+            continue
+        ring = max(rings, key=_ring_area)
+        points = [
+            [round(float(point[0]), 5), round(float(point[1]), 5)]
+            for point in ring
+        ]
+        if len(points) < 3:
+            continue
+        rows.append({
+            "provincia": name,
+            "polygon": json.dumps(points, separators=(",", ":")),
+            "lat": round(sum(point[1] for point in points) / len(points), 6),
+            "lon": round(sum(point[0] for point in points) / len(points), 6),
+        })
+    return rows
+
+
+def _ensure_province_map(database):
+    """Crea y puebla dim_provincia_mapa sin depender de volver a correr el job ETL."""
+    rows = _province_rows()
+    if not rows:
+        print("[bootstrap] Sin GeoJSON de provincias; se omite dim_provincia_mapa.")
+        return
+    with database.get_sqla_engine_with_context() as engine:
+        with engine.begin() as connection:
+            connection.exec_driver_sql(
+                "CREATE TABLE IF NOT EXISTS dim_provincia_mapa ("
+                "provincia VARCHAR(80) PRIMARY KEY, "
+                "polygon TEXT NOT NULL, "
+                "lat NUMERIC(10,6), "
+                "lon NUMERIC(10,6))"
+            )
+            connection.exec_driver_sql("TRUNCATE TABLE dim_provincia_mapa")
+            connection.execute(
+                text(
+                    "INSERT INTO dim_provincia_mapa "
+                    "(provincia, polygon, lat, lon) VALUES "
+                    "(:provincia, :polygon, :lat, :lon)"
+                ),
+                rows,
+            )
+    print(f"[bootstrap] dim_provincia_mapa lista con {len(rows)} provincias.")
+
+
+def _apply_views(database):
+    """Recrea las vistas KPI para que el contenedor no dependa del job ETL."""
+    views_path = Path("/app/kpi_views_postgres.sql")
+    if not views_path.exists():
+        return
+    with database.get_sqla_engine_with_context() as engine:
+        with engine.begin() as connection:
+            connection.exec_driver_sql(views_path.read_text(encoding="utf-8"))
+    print("[bootstrap] Vistas KPI recreadas desde kpi_views_postgres.sql.")
 
 
 def _wait_for_views(database, timeout=180):
@@ -650,6 +734,8 @@ def main():
             existing = None
 
         database = _get_database()
+        _ensure_province_map(database)
+        _apply_views(database)
         schema = _wait_for_views(database)
 
         tables = {

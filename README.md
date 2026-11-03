@@ -32,6 +32,9 @@ PoC_Analisis_Comercial/
 │   ├── schema.sql           # DDL PostgreSQL (Star Schema)
 │   └── schema_sqlite.sql    # Respaldo esquema SQLite
 ├── 04_dashboard/
+│   ├── build_dashboard.py   # Genera el dashboard HTML estático
+│   ├── dashboard.html       # Dashboard con mapa provincial y filtros
+│   ├── data/provincias.geojson # Geometría de las 24 provincias
 │   ├── kpi_views.sql        # Vistas SQLite
 │   ├── kpi_views_postgres.sql # Vistas PostgreSQL / Superset
 │   ├── dax_measures.txt     # Medidas DAX (Power BI)
@@ -220,7 +223,7 @@ Desde la raíz del proyecto, ejecutar `python 02_etl/main.py` (o `run_etl.bat` e
 
 El notebook `02_etl/01_etl_pipeline.ipynb` ejecuta el mismo pipeline y muestra los cuatro indicadores: ingresos, unidades, margen bruto y transacciones.
 
-Para generar una visualización local sin configurar un servidor, ejecutar `python 04_dashboard/build_dashboard.py` y abrir `04_dashboard/dashboard.html`. El HTML contiene seis tarjetas de indicadores (ingresos, unidades, margen, transacciones, ticket promedio y margen %) y gráficos de evolución, categoría, sucursal y segmento. Para una demo interactiva, usar Superset conectado a PostgreSQL (ver [`deploy/SUPERSET_DEPLOY.md`](deploy/SUPERSET_DEPLOY.md)) o Power BI con `03_dw/dw.db`.
+Para generar una visualización local sin configurar un servidor, ejecutar `python 04_dashboard/build_dashboard.py` y abrir `04_dashboard/dashboard.html`. El HTML contiene seis tarjetas de indicadores (ingresos, unidades, margen, transacciones, ticket promedio y margen %), un **mapa coroplético de las 24 provincias** del Ecuador para filtrar la vista con un clic, ranking provincial, participación porcentual en pastel (categoría, canal, método de pago o segmento), top de productos, desempeño por sucursal y ventas por segmento. También acepta `dashboard.html?provincia=Pichincha` para abrir una provincia preseleccionada. Para una demo interactiva, usar Superset conectado a PostgreSQL (ver [`deploy/SUPERSET_DEPLOY.md`](deploy/SUPERSET_DEPLOY.md)) o Power BI con `03_dw/dw.db`.
 
 ---
 

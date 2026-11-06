@@ -43,3 +43,10 @@ node_modules/
 07_presentacion/pres_common.py
 07_presentacion/guion_presentacion.md
 07_presentacion/datos_portada.json
+
+# Documentos y scripts locales de apoyo
+2022LineamientosRepositorio_APA.pdf
+diagnostico1.xlsx
+run_etl.bat
+run_profile.bat
+staging)

@@ -134,6 +134,17 @@ copy .env.example .env
 
 No publicar `.env` ni credenciales reales.
 
+### Credenciales de acceso (solo para revisión de la PoC)
+
+Estas credenciales son de demostración y permiten revisar el despliegue sin configuración adicional:
+
+| Servicio | Usuario | Contraseña / Token |
+| --- | --- | --- |
+| Apache Superset (despliegue) | `admin` | `admin` |
+| Jupyter Notebook | — | `bi_poc` (token de acceso) |
+
+> En un entorno productivo se deben cambiar estos valores mediante las variables de `.env` (`SUPERSET_ADMIN_USER`, `SUPERSET_ADMIN_PASS`, `JUPYTER_TOKEN`).
+
 ---
 
 ## Opciones de Ejecución

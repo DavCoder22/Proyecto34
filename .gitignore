@@ -33,3 +33,13 @@ desktop.ini
 
 # Node/otros
 node_modules/
+
+# Presentación: material de trabajo que no se versiona
+07_presentacion/PlantillaoficialUCE.pptx
+07_presentacion/Presentacion_Estudio_Complexivo_UCE.pptx
+07_presentacion/Presentacion_Examen_Complexivo_UCE.pptx
+07_presentacion/Informe_Practico_APA.pdf
+07_presentacion/build_*.py
+07_presentacion/pres_common.py
+07_presentacion/guion_presentacion.md
+07_presentacion/datos_portada.json

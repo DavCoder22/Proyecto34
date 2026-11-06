@@ -149,6 +149,13 @@ Estas credenciales son de demostración y permiten revisar el despliegue sin con
 
 ## Opciones de Ejecución
 
+### Despliegues en línea
+
+- **Dashboard (Apache Superset):** [https://p01--poc-analisis-comercial--8sz99sr47szz.code.run/superset/dashboard/sales-analytics/?native_filters_key=2ojEtnDrxQqWLP74gXxO5FzUROR2EVJ611FohjvUq3Yyh6-f_GALHpHarYT-3Zl5](https://p01--poc-analisis-comercial--8sz99sr47szz.code.run/superset/dashboard/sales-analytics/?native_filters_key=2ojEtnDrxQqWLP74gXxO5FzUROR2EVJ611FohjvUq3Yyh6-f_GALHpHarYT-3Zl5)
+- **Jupyter Notebook:** [https://p01--proyecto34--8sz99sr47szz.code.run/lab](https://p01--proyecto34--8sz99sr47szz.code.run/lab)
+
+Credenciales de acceso: ver [Credenciales de acceso (solo para revisión de la PoC)](#credenciales-de-acceso-solo-para-revisión-de-la-poc).
+
 ### Opción A: Local con Docker (Recomendado para pruebas)
 
 1. Copiar variables: `copy .env.example .env`

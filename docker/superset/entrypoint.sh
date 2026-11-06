@@ -27,7 +27,18 @@ superset init
 
 if [[ "${SUPERSET_BOOTSTRAP_DASHBOARD:-1}" != "0" ]]; then
     echo "[superset] Creando/verificando el dashboard Sales Analytics..."
-    python /app/bootstrap_dashboard.py || echo "[superset] Aviso: no se pudo preparar el dashboard."
+    bootstrap_ok=0
+    for attempt in 1 2 3; do
+        if python /app/bootstrap_dashboard.py; then
+            bootstrap_ok=1
+            break
+        fi
+        echo "[superset] Reintentando bootstrap en 15s ($attempt/3)..."
+        sleep 15
+    done
+    if [[ "$bootstrap_ok" != "1" ]]; then
+        echo "[superset] Aviso: no se pudo preparar el dashboard tras 3 intentos."
+    fi
 fi
 
 if [[ -x /usr/bin/run-server.sh ]]; then

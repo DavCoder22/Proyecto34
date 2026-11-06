@@ -472,6 +472,7 @@ def _line_params(table, dttm="fecha", metric="sum_venta_neta", y_label="Ventas n
         "comparison_type": "values",
         "contribution": False,
         "datasource": f"{table.id}__table",
+        "emit_filter": True,
         "granularity_sqla": dttm,
         "groupby": [],
         "left_margin": "auto",
@@ -504,6 +505,7 @@ def _bar_params(table, groupby, x_label, metric="sum_venta_neta", y_label="Venta
         "color_scheme": COLOR_SCHEME,
         "contribution": False,
         "datasource": f"{table.id}__table",
+        "emit_filter": True,
         "granularity_sqla": None,
         "groupby": [groupby],
         "left_margin": "auto",
@@ -526,6 +528,7 @@ def _table_params(table, groupby, metrics, row_limit=50, order_metric=None):
         "all_columns": [],
         "color_pn": True,
         "datasource": f"{table.id}__table",
+        "emit_filter": True,
         "granularity_sqla": None,
         "groupby": groupby,
         "include_search": True,
@@ -550,6 +553,7 @@ def _pie_params(table, groupby):
         "adhoc_filters": [],
         "color_scheme": COLOR_SCHEME,
         "datasource": f"{table.id}__table",
+        "emit_filter": True,
         "donut": True,
         "granularity_sqla": None,
         "groupby": [groupby],
@@ -577,6 +581,7 @@ def _geojson_map_params(table):
         "adhoc_filters": [],
         "autozoom": False,
         "datasource": f"{table.id}__table",
+        "emit_filter": True,
         "extruded": False,
         "fill_color_picker": {"r": 0, "g": 0, "b": 0, "a": 0},
         "filled": True,
@@ -966,17 +971,23 @@ def _build_dashboard(kpi_slices, layout, tables, admin, dashboard=None):
             if map_id:
                 excluded.add(map_id)
             return sorted(excluded)
-        # Graficos de ventas: no enviar a rechazos.
-        excluded.update(loss_ids)
-        if comp in {
+        # Graficos de ventas: no enviar a rechazos salvo que la columna emitida
+        # tambien exista en v_rechazos (categoria, marca, sucursal, region o canal).
+        loss_compatible = {
             "CHART-PIE", "CHART-CATEGORY", "CHART-DISCOUNT",
             "CHART-TOP-CATEGORIA", "CHART-REGION",
             "CHART-BRANCH", "CHART-TOP-SUCURSAL",
-        }:
-            # El mapa tiene categoria, region y nombre_sucursal.
-            pass
-        elif map_id:
-            # line (fecha), segmento, marca o canal no existen en el mapa.
+            "CHART-BRAND", "CHART-TOP-MARCA", "CHART-CHANNEL",
+        }
+        map_compatible = {
+            "CHART-PIE", "CHART-CATEGORY", "CHART-DISCOUNT",
+            "CHART-TOP-CATEGORIA", "CHART-REGION",
+            "CHART-BRANCH", "CHART-TOP-SUCURSAL",
+        }
+        if comp not in loss_compatible:
+            excluded.update(loss_ids)
+        if comp not in map_compatible and map_id:
+            # El mapa solo comparte categoria, region, provincia y sucursal.
             excluded.add(map_id)
         return sorted(excluded)
 

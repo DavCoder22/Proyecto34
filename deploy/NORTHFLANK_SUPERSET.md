@@ -1,6 +1,6 @@
 # Desplegar Apache Superset en Northflank (proyecto34)
 
-> Para el dashboard idéntico al local (mapa fijo y provincias clicables), usa [`NORTHFLANK_DASHBOARD.md`](NORTHFLANK_DASHBOARD.md). Superset no puede mostrar ese mapa sin un token de Mapbox y su mapa deck.gl es interactivo.
+> Para el dashboard HTML fijo (sin zoom) usa [`NORTHFLANK_DASHBOARD.md`](NORTHFLANK_DASHBOARD.md). Superset también muestra el mapa provincial con un estilo gratuito de Carto (sin token de Mapbox) y al seleccionar una provincia filtra todas las gráficas.
 
 Guía para el escenario real de la PoC:
 

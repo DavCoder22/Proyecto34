@@ -54,8 +54,20 @@ Ir a `Data` → `Datasets` → `+ Dataset`. Se recomiendan las vistas KPI porque
 | `v_ventas_categoria` | Vista PostgreSQL | Categoría + % de participación |
 | `v_ventas_sucursal` | Vista PostgreSQL | Ranking + ticket promedio |
 | `v_ventas_segmento` | Vista PostgreSQL | Segmento + ticket promedio |
-| `v_ventas_provincia` | Vista PostgreSQL | Ranking provincial + venta neta |
-| `v_kpis_consolidados` | Vista PostgreSQL | Tarjetas de indicadores consolidados |
+| `v_ventas_provincia` | Vista PostgreSQL | Mapa coroplético provincial + venta neta |
+| `v_sucursales_mapa` | Vista PostgreSQL | Mapa de sucursales (lat/lon + venta) |
+| `v_mapa_consolidado` | Vista PostgreSQL | Mapa único: provincias con datos + sucursales |
+| `v_kpis_consolidados` | Vista PostgreSQL | Tarjetas de indicadores por provincia |
+| `v_ventas_marca` | Vista PostgreSQL | Ranking de marcas por unidades y venta neta |
+| `v_descuento_producto` | Vista PostgreSQL | Productos con mayor descuento promedio |
+| `v_top_marca_provincia` | Vista PostgreSQL | Marca líder por provincia |
+| `v_top_marca_sucursal` | Vista PostgreSQL | Marca líder por sucursal |
+| `v_top_producto_provincia` | Vista PostgreSQL | Producto líder por provincia |
+| `v_top_producto_sucursal` | Vista PostgreSQL | Producto líder por sucursal |
+| `v_top_categoria_provincia` | Vista PostgreSQL | Categoría líder por provincia |
+| `v_top_categoria_sucursal` | Vista PostgreSQL | Categoría líder por sucursal |
+| `v_top_descuento_provincia` | Vista PostgreSQL | Mayor descuento por provincia |
+| `v_top_descuento_sucursal` | Vista PostgreSQL | Mayor descuento por sucursal |
 | `fact_ventas` | Tabla | Medidas base y filtros |
 | `dim_tiempo` | Tabla | Filtros por fecha/año/mes/trimestre |
 | `dim_cliente` | Tabla | Filtro por segmento/ciudad |

@@ -68,12 +68,8 @@ Cada vez que cambien los datos, el ETL o los gráficos:
 2. En Northflank, redespliega `proyecto34-dashboard`.
 3. El build vuelve a ejecutar el ETL y regenera `dashboard.html`.
 
-## Por qué no usar Superset para este mapa
+## Superset frente al dashboard HTML
 
-Superset usa `deck.gl`/Mapbox para su mapa provincial. Eso implica:
+Superset usa `deck.gl` con un estilo de mapa gratuito de Carto (Positron), por lo que no requiere token de Mapbox. Las provincias se seleccionan y filtran todos los gráficos del tablero, y además hay un filtro de provincia. Su mapa es interactivo (zoom y desplazamiento).
 
-- Requiere un token de Mapbox (`MAPBOX_API_KEY`).
-- El mapa es interactivo (zoom y desplazamiento).
-- Las provincias no funcionan como filtro global del dashboard.
-
-El dashboard HTML usa un SVG embebido: no necesita token, es fijo y las provincias sí filtran todos los gráficos. Superset queda disponible como dashboard alternativo con tarjetas, evolución, ranking provincial y pastel.
+El dashboard HTML usa un SVG embebido: es fijo, más liviano y no depende de servicios externos de mapas, ideal para capturas de informe. Superset queda disponible como dashboard interactivo con tarjetas, evolución, mapas provincial y de sucursales, y pastel de participación.

@@ -10,3 +10,41 @@ Descuento Promedio % = AVERAGE(FactVentas[descuento_pct])
 
 -- KPI 3: ranking sucursal
 Ranking Sucursal = RANKX(ALL(DimSucursal[nombre_sucursal]), [Venta Neta], , DESC, Dense)
+
+-- Nuevos indicadores comerciales
+Descuento USD = SUMX(FactVentas, FactVentas[venta_bruta] - FactVentas[venta_neta])
+Descuento % Ponderado = DIVIDE([Descuento USD], [Venta Bruta], 0)
+Unidades por Marca = CALCULATE([Unidades], ALLEXCEPT(DimProducto, DimProducto[marca]))
+Venta Neta por Marca = CALCULATE([Venta Neta], ALLEXCEPT(DimProducto, DimProducto[marca]))
+Ranking Marca = RANKX(ALL(DimProducto[marca]), [Unidades], , DESC, Dense)
+Ranking Producto = RANKX(ALL(DimProducto[nombre_producto]), [Unidades], , DESC, Dense)
+
+-- Producto lider por provincia / sucursal (usar en tabla con contexto de filtro)
+Producto Lider = 
+VAR ranking = ADDCOLUMNS(
+    VALUES(DimProducto[nombre_producto]),
+    "@unidades", CALCULATE([Unidades]),
+    "@venta", CALCULATE([Venta Neta])
+)
+RETURN MAXX(TOPN(1, ranking, [@unidades], DESC, [@venta], DESC), DimProducto[nombre_producto])
+
+-- Marca lider por provincia / sucursal (usar en tabla con contexto de filtro)
+Marca Lider = 
+VAR ranking = ADDCOLUMNS(
+    VALUES(DimProducto[marca]),
+    "@unidades", CALCULATE([Unidades]),
+    "@venta", CALCULATE([Venta Neta])
+)
+RETURN MAXX(
+    TOPN(1, FILTER(ranking, NOT ISBLANK(DimProducto[marca])), [@unidades], DESC, [@venta], DESC),
+    DimProducto[marca]
+)
+
+-- Producto con mayor descuento promedio por provincia / sucursal
+Producto Mayor Descuento = 
+VAR ranking = ADDCOLUMNS(
+    VALUES(DimProducto[nombre_producto]),
+    "@descuento", CALCULATE([Descuento % Ponderado]),
+    "@unidades", CALCULATE([Unidades])
+)
+RETURN MAXX(TOPN(1, FILTER(ranking, [@unidades] >= 5), [@descuento], DESC), DimProducto[nombre_producto])

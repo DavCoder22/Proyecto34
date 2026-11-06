@@ -25,7 +25,9 @@ def scope_data(conn, where="", params=()):
         "COUNT(DISTINCT f.id_venta) transacciones, "
         "COALESCE(SUM(f.venta_neta) * 1.0 / NULLIF(COUNT(DISTINCT f.id_venta), 0), 0) ticket, "
         "COALESCE(SUM(f.margen) * 1.0 / NULLIF(SUM(f.venta_neta), 0), 0) margen_pct "
-        "FROM FactVentas f JOIN DimCliente c ON f.id_cliente = c.id_cliente "
+        "FROM FactVentas f "
+        "JOIN DimCliente c ON f.id_cliente = c.id_cliente "
+        "JOIN DimSucursal s ON f.id_sucursal = s.id_sucursal "
         f"{clause}", params
     ).fetchone())
 
@@ -34,19 +36,21 @@ def scope_data(conn, where="", params=()):
         "FROM FactVentas f "
         "JOIN DimTiempo t ON f.id_tiempo = t.id_tiempo "
         "JOIN DimCliente c ON f.id_cliente = c.id_cliente "
+        "JOIN DimSucursal s ON f.id_sucursal = s.id_sucursal "
         f"{clause} GROUP BY t.anio, t.mes, t.mes_nombre ORDER BY t.anio, t.mes"
     ), params)
 
     categoria = query(conn, (
-        "SELECT p.categoria, SUM(f.venta_neta) venta_neta "
+        "SELECT p.categoria, SUM(f.cantidad) unidades, SUM(f.venta_neta) venta_neta "
         "FROM FactVentas f "
         "JOIN DimProducto p ON f.id_producto = p.id_producto "
         "JOIN DimCliente c ON f.id_cliente = c.id_cliente "
+        "JOIN DimSucursal s ON f.id_sucursal = s.id_sucursal "
         f"{clause} GROUP BY p.categoria ORDER BY venta_neta DESC"
     ), params)
 
     sucursal = query(conn, (
-        "SELECT s.nombre_sucursal, SUM(f.venta_neta) venta_neta "
+        "SELECT s.nombre_sucursal, SUM(f.cantidad) unidades, SUM(f.venta_neta) venta_neta "
         "FROM FactVentas f "
         "JOIN DimSucursal s ON f.id_sucursal = s.id_sucursal "
         "JOIN DimCliente c ON f.id_cliente = c.id_cliente "
@@ -55,30 +59,77 @@ def scope_data(conn, where="", params=()):
 
     segmento = query(conn, (
         "SELECT c.segmento, SUM(f.venta_neta) venta_neta "
-        "FROM FactVentas f JOIN DimCliente c ON f.id_cliente = c.id_cliente "
+        "FROM FactVentas f "
+        "JOIN DimCliente c ON f.id_cliente = c.id_cliente "
+        "JOIN DimSucursal s ON f.id_sucursal = s.id_sucursal "
         f"{clause} GROUP BY c.segmento ORDER BY venta_neta DESC"
     ), params)
 
     canal = query(conn, (
         "SELECT COALESCE(NULLIF(f.canal_venta, ''), 'No especificado') canal_venta, "
         "SUM(f.venta_neta) venta_neta "
-        "FROM FactVentas f JOIN DimCliente c ON f.id_cliente = c.id_cliente "
+        "FROM FactVentas f "
+        "JOIN DimCliente c ON f.id_cliente = c.id_cliente "
+        "JOIN DimSucursal s ON f.id_sucursal = s.id_sucursal "
         f"{clause} GROUP BY canal_venta ORDER BY venta_neta DESC"
     ), params)
 
     metodo_pago = query(conn, (
         "SELECT COALESCE(NULLIF(f.metodo_pago, ''), 'No especificado') metodo_pago, "
         "SUM(f.venta_neta) venta_neta "
-        "FROM FactVentas f JOIN DimCliente c ON f.id_cliente = c.id_cliente "
+        "FROM FactVentas f "
+        "JOIN DimCliente c ON f.id_cliente = c.id_cliente "
+        "JOIN DimSucursal s ON f.id_sucursal = s.id_sucursal "
         f"{clause} GROUP BY metodo_pago ORDER BY venta_neta DESC"
     ), params)
 
     producto = query(conn, (
-        "SELECT p.nombre_producto, SUM(f.venta_neta) venta_neta "
+        "SELECT p.nombre_producto, SUM(f.cantidad) unidades, SUM(f.venta_neta) venta_neta "
         "FROM FactVentas f "
         "JOIN DimProducto p ON f.id_producto = p.id_producto "
         "JOIN DimCliente c ON f.id_cliente = c.id_cliente "
-        f"{clause} GROUP BY p.nombre_producto ORDER BY venta_neta DESC LIMIT 8"
+        "JOIN DimSucursal s ON f.id_sucursal = s.id_sucursal "
+        f"{clause} GROUP BY p.nombre_producto "
+        "ORDER BY venta_neta DESC LIMIT 8"
+    ), params)
+
+    producto_unidades = query(conn, (
+        "SELECT p.nombre_producto, p.categoria, p.marca, "
+        "SUM(f.cantidad) unidades, SUM(f.venta_neta) venta_neta "
+        "FROM FactVentas f "
+        "JOIN DimProducto p ON f.id_producto = p.id_producto "
+        "JOIN DimCliente c ON f.id_cliente = c.id_cliente "
+        "JOIN DimSucursal s ON f.id_sucursal = s.id_sucursal "
+        f"{clause} GROUP BY p.id_producto, p.nombre_producto, p.categoria, p.marca "
+        "ORDER BY unidades DESC, venta_neta DESC LIMIT 10"
+    ), params)
+
+    marca = query(conn, (
+        "SELECT p.marca, SUM(f.cantidad) unidades, SUM(f.venta_neta) venta_neta, "
+        "SUM(f.venta_bruta - f.venta_neta) descuento_usd, "
+        "AVG(f.descuento_pct) descuento_promedio "
+        "FROM FactVentas f "
+        "JOIN DimProducto p ON f.id_producto = p.id_producto "
+        "JOIN DimCliente c ON f.id_cliente = c.id_cliente "
+        "JOIN DimSucursal s ON f.id_sucursal = s.id_sucursal "
+        "WHERE p.marca IS NOT NULL AND TRIM(p.marca) <> '' "
+        f"{'AND ' + where if where else ''} "
+        "GROUP BY p.marca ORDER BY unidades DESC, venta_neta DESC"
+    ), params)
+
+    descuento_producto = query(conn, (
+        "SELECT p.nombre_producto, p.categoria, p.marca, "
+        "SUM(f.cantidad) unidades, SUM(f.venta_neta) venta_neta, "
+        "SUM(f.venta_bruta - f.venta_neta) descuento_usd, "
+        "AVG(f.descuento_pct) descuento_promedio "
+        "FROM FactVentas f "
+        "JOIN DimProducto p ON f.id_producto = p.id_producto "
+        "JOIN DimCliente c ON f.id_cliente = c.id_cliente "
+        "JOIN DimSucursal s ON f.id_sucursal = s.id_sucursal "
+        f"{clause} "
+        "GROUP BY p.id_producto, p.nombre_producto, p.categoria, p.marca "
+        "HAVING SUM(f.cantidad) >= 5 "
+        "ORDER BY descuento_promedio DESC, descuento_usd DESC LIMIT 10"
     ), params)
 
     return {
@@ -90,6 +141,27 @@ def scope_data(conn, where="", params=()):
         "canal": canal,
         "metodo_pago": metodo_pago,
         "producto": producto,
+        "producto_unidades": producto_unidades,
+        "marca": marca,
+        "descuento_producto": descuento_producto,
+    }
+
+
+def leaders(scope):
+    """Resume los lideres del corte: marca, producto, categoria y descuento."""
+    def first(rows):
+        return rows[0] if rows else None
+
+    categoria = max(
+        scope.get("categoria") or [],
+        key=lambda row: (row.get("unidades") or 0, row.get("venta_neta") or 0),
+        default=None,
+    )
+    return {
+        "marca": first(scope.get("marca")),
+        "producto": first(scope.get("producto_unidades")),
+        "categoria": categoria,
+        "descuento": first(scope.get("descuento_producto")),
     }
 
 
@@ -307,6 +379,29 @@ body {
 .share-name { flex: 1 1 auto; color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .share-value { font-weight: 700; color: #1e293b; }
 .insight-box { border-left: 4px solid var(--uce-gold); background: #fffaf0; border-radius: 10px; padding: 12px 14px; font-size: .86rem; color: #5c4a1e; }
+.leader-card {
+  border: 1px solid #dbe4f5; border-left: 5px solid var(--uce-gold);
+  border-radius: 14px; background: #fff;
+  box-shadow: 0 8px 22px rgba(16, 32, 64, .07); height: 100%;
+}
+.leader-card.kpi-red { border-left-color: var(--uce-red); }
+.leader-card.kpi-green { border-left-color: var(--uce-green); }
+.leader-card.kpi-blue { border-left-color: var(--uce-blue); }
+.leader-value {
+  color: var(--uce-blue); font-size: 1.05rem; font-weight: 800;
+  letter-spacing: -.2px; line-height: 1.25; margin: 2px 0 4px;
+}
+.leader-meta { color: #64748b; font-size: .76rem; }
+.territory-table { font-size: .82rem; margin-bottom: 0; }
+.territory-table thead th {
+  color: #64748b; font-size: .68rem; font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase;
+  border-bottom: 2px solid #e5ebf5; white-space: nowrap;
+}
+.territory-table tbody td { vertical-align: middle; border-color: #eef2f8; }
+.territory-table .lead-name { color: #1e293b; font-weight: 600; line-height: 1.2; }
+.territory-table .lead-meta { color: #64748b; font-size: .73rem; margin-top: 1px; }
+.territory-table .money-cell { color: var(--uce-blue); font-weight: 700; white-space: nowrap; }
 .footer-uce { color: #64748b; font-size: .85rem; }
 @media (max-width: 767px) {
   .chart-box.map { height: 320px; }
@@ -333,7 +428,7 @@ body {
         <p class="text-secondary mb-0">Universo válido integrado por el ETL · Fuente: <code>03_dw/dw.db</code></p>
       </div>
       <div class="text-end">
-        <span class="badge badge-uce rounded-pill px-3 py-2">Mapa provincial · 6 KPIs · 6 gráficos</span>
+        <span class="badge badge-uce rounded-pill px-3 py-2">Mapa provincial · 6 KPIs · 8 gráficos</span>
         <div class="small text-secondary mt-2">Vista ejecutiva interactiva</div>
       </div>
     </div>
@@ -397,6 +492,37 @@ body {
         <div class="kpi-label">Margen %</div>
         <div class="kpi-value" id="margen_pct"></div>
         <div class="small text-secondary">sobre ingresos netos</div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4" id="leaderStrip">
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="card leader-card"><div class="card-body">
+        <div class="kpi-label">Marca más vendida</div>
+        <div class="leader-value" id="leaderMarca">—</div>
+        <div class="leader-meta" id="leaderMarcaSub">Sin datos</div>
+      </div></div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="card leader-card kpi-blue"><div class="card-body">
+        <div class="kpi-label">Producto más vendido</div>
+        <div class="leader-value" id="leaderProducto">—</div>
+        <div class="leader-meta" id="leaderProductoSub">Sin datos</div>
+      </div></div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="card leader-card kpi-green"><div class="card-body">
+        <div class="kpi-label">Categoría más vendida</div>
+        <div class="leader-value" id="leaderCategoria">—</div>
+        <div class="leader-meta" id="leaderCategoriaSub">Sin datos</div>
+      </div></div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="card leader-card kpi-red"><div class="card-body">
+        <div class="kpi-label">Mayor descuento promedio</div>
+        <div class="leader-value" id="leaderDescuento">—</div>
+        <div class="leader-meta" id="leaderDescuentoSub">Sin datos</div>
       </div></div>
     </div>
   </div>
@@ -475,6 +601,60 @@ body {
           <span class="badge text-bg-light text-secondary fw-normal">8 primeros</span>
         </div>
         <div class="card-body"><div class="chart-box"><canvas id="producto"></canvas></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <div class="col-12 col-lg-6">
+      <div class="card chart-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Marcas más vendidas</span>
+          <span class="badge text-bg-light text-secondary fw-normal">Unidades</span>
+        </div>
+        <div class="card-body"><div class="chart-box"><canvas id="marcas"></canvas></div></div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-6">
+      <div class="card chart-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Productos con mayor descuento</span>
+          <span class="badge text-bg-light text-secondary fw-normal">Promedio %</span>
+        </div>
+        <div class="card-body"><div class="chart-box"><canvas id="descuentos"></canvas></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <div class="col-12">
+      <div class="card chart-card">
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <span>Inteligencia territorial · líderes por provincia y sucursal</span>
+          <span class="badge text-bg-light text-secondary fw-normal">Producto · Categoría · Marca · Descuento</span>
+        </div>
+        <div class="card-body">
+          <div class="kpi-label mb-2">Por provincia (provincia del cliente)</div>
+          <div class="table-responsive mb-4">
+            <table class="table territory-table align-middle">
+              <thead><tr>
+                <th>Provincia</th><th>Venta neta</th><th>Categoría líder</th>
+                <th>Producto líder</th><th>Marca líder</th><th>Mayor descuento</th>
+              </tr></thead>
+              <tbody id="territorioProvincias"></tbody>
+            </table>
+          </div>
+          <div class="kpi-label mb-2">Por sucursal</div>
+          <div class="table-responsive">
+            <table class="table territory-table align-middle">
+              <thead><tr>
+                <th>Sucursal</th><th>Venta neta</th><th>Categoría líder</th>
+                <th>Producto líder</th><th>Marca líder</th><th>Mayor descuento</th>
+              </tr></thead>
+              <tbody id="territorioSucursales"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -565,6 +745,36 @@ const horizontal = {
     y: {grid: {display: false}, ticks: {autoSkip: false, font: {size: 11}}}
   }
 };
+let brandRows = [];
+let discountRows = [];
+const horizontalUnits = {
+  responsive: true,
+  maintainAspectRatio: false,
+  indexAxis: 'y',
+  plugins: {legend: {display: false}, tooltip: {backgroundColor: '#0033A0', padding: 12, cornerRadius: 8,
+    callbacks: {label: ctx => {
+      const row = brandRows[ctx.dataIndex] || {};
+      return `${num(ctx.parsed.x)} und. · ${money(row.venta_neta)}`;
+    }}}},
+  scales: {
+    x: {beginAtZero: true, grid: {color: '#e5ebf5'}, ticks: {callback: value => num(value)}},
+    y: {grid: {display: false}, ticks: {autoSkip: false, font: {size: 11}}}
+  }
+};
+const horizontalPercent = {
+  responsive: true,
+  maintainAspectRatio: false,
+  indexAxis: 'y',
+  plugins: {legend: {display: false}, tooltip: {backgroundColor: '#0033A0', padding: 12, cornerRadius: 8,
+    callbacks: {label: ctx => {
+      const row = discountRows[ctx.dataIndex] || {};
+      return `${pct(ctx.parsed.x)} · ${money(row.descuento_usd)} descontado`;
+    }}}},
+  scales: {
+    x: {beginAtZero: true, grid: {color: '#e5ebf5'}, ticks: {callback: value => (value * 100).toFixed(0) + '%'}},
+    y: {grid: {display: false}, ticks: {autoSkip: false, font: {size: 11}}}
+  }
+};
 
 const lineChart = new Chart(document.getElementById('mes'), {
   type: 'line',
@@ -602,6 +812,16 @@ const segmentChart = new Chart(document.getElementById('segmento'), {
   type: 'bar',
   data: {labels: [], datasets: [{data: [], backgroundColor: ['#0033A0', '#CE1126', '#F2A900', '#1E7B3C', '#4F81BD'], borderRadius: 6, maxBarThickness: 42}]},
   options: vertical
+});
+const brandChart = new Chart(document.getElementById('marcas'), {
+  type: 'bar',
+  data: {labels: [], datasets: [{data: [], backgroundColor: '#0033A0', borderRadius: 5, maxBarThickness: 20}]},
+  options: horizontalUnits
+});
+const discountChart = new Chart(document.getElementById('descuentos'), {
+  type: 'bar',
+  data: {labels: [], datasets: [{data: [], backgroundColor: '#CE1126', borderRadius: 5, maxBarThickness: 20}]},
+  options: horizontalPercent
 });
 
 function updateLine(scope) {
@@ -653,6 +873,67 @@ function updateSegments(scope) {
   segmentChart.data.labels = scope.segmento.map(row => row.segmento);
   segmentChart.data.datasets[0].data = scope.segmento.map(row => row.venta_neta);
   segmentChart.update();
+}
+
+function updateBrands(scope) {
+  brandRows = (scope.marca || []).slice(0, 10);
+  brandChart.data.labels = brandRows.map(row => row.marca);
+  brandChart.data.datasets[0].data = brandRows.map(row => Number(row.unidades) || 0);
+  brandChart.update();
+}
+
+function updateDiscounts(scope) {
+  discountRows = (scope.descuento_producto || []).slice(0, 10);
+  discountChart.data.labels = discountRows.map(row => row.nombre_producto);
+  discountChart.data.datasets[0].data = discountRows.map(row => Number(row.descuento_promedio) || 0);
+  discountChart.update();
+}
+
+function setLeaders(scope) {
+  const marca = (scope.marca || [])[0];
+  const producto = (scope.producto_unidades || [])[0];
+  const categoria = [...(scope.categoria || [])]
+    .sort((a, b) => (b.unidades || 0) - (a.unidades || 0))[0];
+  const descuento = (scope.descuento_producto || [])[0];
+  const set = (id, value, meta) => {
+    document.getElementById(id).textContent = value;
+    document.getElementById(id + 'Sub').textContent = meta;
+  };
+  set('leaderMarca', marca ? marca.marca : '—',
+      marca ? `${num(marca.unidades)} und. · ${money(marca.venta_neta)}` : 'Sin datos');
+  set('leaderProducto', producto ? producto.nombre_producto : '—',
+      producto ? `${num(producto.unidades)} und. · ${producto.marca || 'Sin marca'}` : 'Sin datos');
+  set('leaderCategoria', categoria ? categoria.categoria : '—',
+      categoria ? `${num(categoria.unidades)} und. · ${money(categoria.venta_neta)}` : 'Sin datos');
+  set('leaderDescuento', descuento ? descuento.nombre_producto : '—',
+      descuento ? `${pct(descuento.descuento_promedio)} · ${money(descuento.descuento_usd)} descontado` : 'Sin datos');
+}
+
+function leaderRow(item) {
+  const lideres = item.lideres || {};
+  const categoria = lideres.categoria;
+  const producto = lideres.producto;
+  const marca = lideres.marca;
+  const descuento = lideres.descuento;
+  const itemName = esc(item.nombre);
+  const itemMeta = item.provincia && item.provincia !== item.nombre
+    ? `<div class="lead-meta">${esc(item.provincia)}</div>` : '';
+  return `<tr>
+    <td><div class="lead-name">${itemName}</div>${itemMeta}</td>
+    <td class="money-cell">${money(item.venta_neta)}</td>
+    <td>${categoria ? `<div class="lead-name">${esc(categoria.categoria)}</div><div class="lead-meta">${num(categoria.unidades)} und.</div>` : '—'}</td>
+    <td>${producto ? `<div class="lead-name">${esc(producto.nombre_producto)}</div><div class="lead-meta">${num(producto.unidades)} und. · ${esc(producto.marca || 'Sin marca')}</div>` : '—'}</td>
+    <td>${marca ? `<div class="lead-name">${esc(marca.marca)}</div><div class="lead-meta">${num(marca.unidades)} und.</div>` : '—'}</td>
+    <td>${descuento ? `<div class="lead-name">${esc(descuento.nombre_producto)}</div><div class="lead-meta">${pct(descuento.descuento_promedio)} · ${money(descuento.descuento_usd)}</div>` : '—'}</td>
+  </tr>`;
+}
+
+function renderTerritorio() {
+  const territorio = data.territorio || {provincias: [], sucursales: []};
+  document.getElementById('territorioProvincias').innerHTML =
+    (territorio.provincias || []).map(leaderRow).join('');
+  document.getElementById('territorioSucursales').innerHTML =
+    (territorio.sucursales || []).map(leaderRow).join('');
 }
 
 function paintMap() {
@@ -734,10 +1015,14 @@ function updateInsight(scope) {
   const top = (scope.categoria || [])[0];
   const topProduct = (scope.producto || [])[0];
   const prov = (scope.sucursal || [])[0];
+  const topBrand = (scope.marca || [])[0];
+  const topDiscount = (scope.descuento_producto || [])[0];
   const total = scope.kpis.ingresos || 1;
   const pieces = [];
   if (top) pieces.push(`<strong>${esc(top.categoria)}</strong> concentra ${pct(top.venta_neta / total)} de la venta neta.`);
   if (topProduct) pieces.push(`El producto líder es <strong>${esc(topProduct.nombre_producto)}</strong>.`);
+  if (topBrand) pieces.push(`La marca más vendida es <strong>${esc(topBrand.marca)}</strong> (${num(topBrand.unidades)} und.).`);
+  if (topDiscount) pieces.push(`El mayor descuento promedio lo tiene <strong>${esc(topDiscount.nombre_producto)}</strong> (${pct(topDiscount.descuento_promedio)}).`);
   if (prov) pieces.push(`La sucursal con mayor aporte es <strong>${esc(prov.nombre_sucursal)}</strong>.`);
   document.getElementById('provinceInsight').innerHTML = pieces.join(' ');
 }
@@ -754,9 +1039,12 @@ function applyProvince(name) {
 function refresh() {
   const scope = currentScope();
   setKpis(scope);
+  setLeaders(scope);
   updateLine(scope);
   updateShare(scope);
   updateProducts(scope);
+  updateBrands(scope);
+  updateDiscounts(scope);
   updateBranches(scope);
   updateSegments(scope);
   updateInsight(scope);
@@ -788,6 +1076,7 @@ if (initialProvince && data.porProvincia[initialProvince]) {
 }
 
 renderRanking();
+renderTerritorio();
 refresh();
 </script>
 </body>
@@ -807,16 +1096,43 @@ def main():
         "GROUP BY c.provincia ORDER BY venta_neta DESC"
     ))
     total = scope_data(conn)
-    por_provincia = {
-        row["provincia"]: scope_data(conn, "c.provincia = ?", (row["provincia"],))
-        for row in provincias
-    }
+    por_provincia = {}
+    territorio_provincias = []
+    for row in provincias:
+        scope = scope_data(conn, "c.provincia = ?", (row["provincia"],))
+        por_provincia[row["provincia"]] = scope
+        territorio_provincias.append({
+            "nombre": row["provincia"],
+            "venta_neta": row["venta_neta"],
+            "lideres": leaders(scope),
+        })
+
+    sucursales = query(conn, (
+        "SELECT s.nombre_sucursal, s.provincia "
+        "FROM DimSucursal s ORDER BY s.nombre_sucursal"
+    ))
+    territorio_sucursales = []
+    for row in sucursales:
+        scope = scope_data(conn, "s.nombre_sucursal = ?", (row["nombre_sucursal"],))
+        if not scope["kpis"]["ingresos"]:
+            continue
+        territorio_sucursales.append({
+            "nombre": row["nombre_sucursal"],
+            "provincia": row["provincia"],
+            "venta_neta": scope["kpis"]["ingresos"],
+            "lideres": leaders(scope),
+        })
+    territorio_sucursales.sort(key=lambda item: item["venta_neta"], reverse=True)
     conn.close()
 
     data = {
         "provincias": provincias,
         "total": total,
         "porProvincia": por_provincia,
+        "territorio": {
+            "provincias": territorio_provincias,
+            "sucursales": territorio_sucursales,
+        },
     }
     payload = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
     html = (HTML_TEMPLATE

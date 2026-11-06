@@ -23,6 +23,44 @@ FACT_COLS = [
 
 PROVINCE_GEOJSON = ROOT / "04_dashboard" / "data" / "provincias.geojson"
 PROVINCE_ALIASES = {"Santo Domingo": "Santo Domingo de los Tsáchilas"}
+REJECTIONS_PATH = ROOT / "06_calidad" / "log_rechazos.csv"
+
+REJECTION_COLS = [
+    "id_venta", "fecha_venta", "cod_cliente", "cod_producto", "cod_sucursal",
+    "cantidad", "precio_unitario", "descuento_pct", "canal_venta",
+    "metodo_pago", "motivo", "venta_perdida",
+]
+
+
+def _rejections_frame():
+    """Lee el log de rechazos y calcula la perdida estimada por fila."""
+    if not REJECTIONS_PATH.exists():
+        return pd.DataFrame(columns=REJECTION_COLS)
+    df = pd.read_csv(REJECTIONS_PATH, dtype=str, encoding="utf-8-sig")
+    if df.empty:
+        return pd.DataFrame(columns=REJECTION_COLS)
+    for column in ("cantidad", "precio_unitario", "descuento_pct"):
+        if column in df.columns:
+            df[column] = pd.to_numeric(df[column], errors="coerce")
+        else:
+            df[column] = 0.0
+    if "fecha_venta" in df.columns:
+        df["fecha_venta"] = pd.to_datetime(df["fecha_venta"], errors="coerce").dt.date
+    else:
+        df["fecha_venta"] = None
+    df["cantidad"] = df["cantidad"].fillna(0)
+    df["precio_unitario"] = df["precio_unitario"].fillna(0)
+    df["descuento_pct"] = df["descuento_pct"].fillna(0)
+    df["descuento_pct"] = df["descuento_pct"].where(
+        df["descuento_pct"] <= 1, df["descuento_pct"] / 100
+    )
+    df["venta_perdida"] = (
+        df["cantidad"] * df["precio_unitario"] * (1 - df["descuento_pct"])
+    )
+    for column in REJECTION_COLS:
+        if column not in df.columns:
+            df[column] = None
+    return df[REJECTION_COLS]
 
 
 def _ring_area(ring):
@@ -143,6 +181,9 @@ def _load_sqlite(frames, fact_full, dimt, prod):
     agg_suc = fact_full.groupby("id_sucursal", as_index=False).agg(venta_neta=("venta_neta", "sum"))
     agg_suc.to_sql("Agg_VentasSucursal", conn, index=False, if_exists="replace")
 
+    rejections = _rejections_frame()
+    rejections.to_sql("fact_rechazos", conn, index=False, if_exists="replace")
+
     views_sql = (ROOT / "04_dashboard" / "kpi_views.sql").read_text(encoding="utf-8")
     conn.executescript(views_sql)
     conn.commit()
@@ -220,8 +261,8 @@ def _reset_postgres_schema(engine):
     with engine.begin() as conn:
         conn.exec_driver_sql(schema_sql)
         conn.exec_driver_sql(
-            "TRUNCATE TABLE fact_ventas, dim_tiempo, dim_cliente, dim_producto, dim_sucursal "
-            "RESTART IDENTITY CASCADE"
+            "TRUNCATE TABLE fact_ventas, fact_rechazos, dim_tiempo, dim_cliente, "
+            "dim_producto, dim_sucursal RESTART IDENTITY CASCADE"
         )
 
 
@@ -260,6 +301,22 @@ def _write_evidence_tables(engine, df_dict):
             method="multi",
             chunksize=500,
         )
+
+
+def _write_rejections(engine):
+    frame = _rejections_frame()
+    if frame.empty:
+        print("[LOAD][WARN] Sin log de rechazos para cargar en fact_rechazos")
+        return
+    frame.to_sql(
+        "fact_rechazos",
+        engine,
+        index=False,
+        if_exists="append",
+        method="multi",
+        chunksize=500,
+    )
+    print(f"[LOAD] fact_rechazos cargada con {len(frame)} filas")
 
 
 def _write_province_map(engine):
@@ -306,6 +363,7 @@ def _load_postgres(frames, df_dict):
         _reset_postgres_schema(engine)
         _write_postgres_frames(engine, frames)
         _write_evidence_tables(engine, df_dict)
+        _write_rejections(engine)
         _write_province_map(engine)
         _apply_postgres_views(engine)
         _sync_postgres_sequences(engine)

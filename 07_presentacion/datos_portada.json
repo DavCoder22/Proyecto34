@@ -1,0 +1,28 @@
+{
+  "titulo": "Integración y calidad de datos para el análisis comercial: prueba de concepto con ETL, data warehouse y dashboard en Apache Superset",
+  "autores": [
+    {
+      "apellidos_nombres": "Malquin Pozo, David Sebastián",
+      "cedula": "1750115089",
+      "correo": "dsmalquin@uce.edu.ec"
+    }
+  ],
+  "tutor": {
+    "apellidos_nombres": "Atudillo Quimbiulco, Kevin Segundo",
+    "cedula": "17230335711",
+    "cargo": "DOCENTE-TUTOR"
+  },
+  "facultad": "Facultad de Ingeniería y Ciencias Aplicadas, Universidad Central del Ecuador",
+  "carrera": "Carrera de Sistemas de Información",
+  "modalidad": "Trabajo de Titulación modalidad Examen Complexivo teórico-práctico previo a la obtención del título de Ingeniero(a) en Sistemas de Información",
+  "componente": "Inteligencia de negocios",
+  "subcomponente": "Integración y preparación de datos",
+  "tema_especifico": "Procesos ETL, calidad e integración de fuentes de datos",
+  "autor_propuesta": "Atudillo Quimbiulco, Kevin Segundo",
+  "cedula_propuesta": "17230335711",
+  "repositorio": "https://github.com/DavCoder22/Proyecto34",
+  "ciudad": "Quito",
+  "anio": "2026",
+  "sello": "[Sello institucional UCE]",
+  "fecha_aprobacion": "6 de noviembre"
+}

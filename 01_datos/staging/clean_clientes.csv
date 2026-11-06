@@ -298,7 +298,7 @@ C00296,Sofía Morales,Sin segmento,Quito,Pichincha,2022-07-25,Activo
 C00297,Valeria Pérez,Frecuente,Ambato,Tungurahua,2025-07-29,Activo
 C00298,Luis Rodríguez,Premium,Guayaquil,Guayas,2024-05-18,Activo
 C00299,Paola Pérez,Premium,Guayaquil,Guayas,2019-03-05,Activo
-C00300,Paola García,Masivo,Riobamba,Chimborazo,,Activo
+C00300,Paola García,Masivo,Riobamba,Chimborazo,2022-11-27,Activo
 C00301,Paola García,Masivo,Manta,Manabí,2018-05-29,Activo
 C00302,María Vera,Frecuente,QUITO,Azuay,2025-08-08,Inactivo
 C00303,Luis Paredes,Masivo,Santo Domingo,Santo Domingo de los Tsáchilas,2020-10-21,Activo
@@ -467,7 +467,7 @@ C00465,Diego Pérez,Masivo,Loja,Loja,2020-02-12,Activo
 C00466,Daniela Torres,Premium,Loja,Loja,2019-01-19,Activo
 C00467,Sofía Morales,Masivo,Guayaquil,Guayas,2019-09-17,Inactivo
 C00468,Ana Torres,Masivo,Manta,Manabí,2018-04-14,Activo
-C00469,Paola Mendoza,Premium,Guayaquil,Guayas,,Activo
+C00469,Paola Mendoza,Premium,Guayaquil,Guayas,2021-03-26,Activo
 C00470,Jorge López,Frecuente,Quito,Pichincha,2025-03-26,Activo
 C00471,María García,Masivo,Quito,Pichincha,2019-07-11,Activo
 C00472,Valeria Paredes,Masivo,Ambato,Tungurahua,2021-12-23,Activo
@@ -542,7 +542,7 @@ C00540,Fernando Rodríguez,Corporativo,Cuenca,Azuay,2018-04-09,Activo
 C00541,Paola Mendoza,Premium,Guayaquil,Guayas,2026-01-16,Activo
 C00542,María Mendoza,Frecuente,Ambato,Tungurahua,2019-03-11,Activo
 C00543,María García,Frecuente,Machala,El Oro,2019-07-17,Activo
-C00544,Luis López,Premium,Quito,Pichincha,,Activo
+C00544,Luis López,Premium,Quito,Pichincha,2020-10-22,Activo
 C00545,María Pérez,Corporativo,Guayaquil,Guayas,2025-03-15,Activo
 C00546,Ana Pérez,Premium,Guayaquil,Guayas,2026-02-07,Inactivo
 C00547,Carlos Castro,Masivo,Santo Domingo,Santo Domingo de los Tsáchilas,2020-09-07,Activo
@@ -652,7 +652,7 @@ C00650,Camila García,Masivo,QUITO,Guayas,2023-12-29,Activo
 C00651,Diego Pérez,Frecuente,Manta,Manabí,2021-06-04,Activo
 C00652,Jorge López,Masivo,Quito,Pichincha,2024-09-15,Activo
 C00653,Miguel Castro,Masivo,Quito,Pichincha,2021-07-23,Activo
-C00654,Miguel Torres,Masivo,Cuenca,Azuay,,Activo
+C00654,Miguel Torres,Masivo,Cuenca,Azuay,2022-01-17,Activo
 C00655,María García,Masivo,Manta,Manabí,2019-09-05,Activo
 C00656,Daniela Castro,Premium,Guayaquil,Guayas,2025-12-21,Activo
 C00657,Jorge Torres,Frecuente,Riobamba,Chimborazo,2020-01-05,Inactivo
@@ -760,7 +760,7 @@ C00758,Ana López,Frecuente,Guayaquil,Guayas,2025-10-13,Activo
 C00759,Miguel Castro,Frecuente,Santo Domingo,Santo Domingo de los Tsáchilas,2020-09-04,Activo
 C00760,Diego Morales,Frecuente,Guayaquil,Guayas,2018-06-15,Activo
 C00761,María Cevallos,Corporativo,Cuenca,Azuay,2021-08-07,Activo
-C00762,Valeria López,Masivo,Riobamba,Chimborazo,,Activo
+C00762,Valeria López,Masivo,Riobamba,Chimborazo,2026-01-23,Activo
 C00763,Sofía Castro,Masivo,Loja,Loja,2024-02-06,Activo
 C00764,Daniela Pérez,Masivo,Loja,Loja,2022-01-22,Activo
 C00765,Valeria Vera,Frecuente,Manta,Manabí,2023-05-28,Activo
@@ -854,7 +854,7 @@ C00852,Carlos Morales,Masivo,Loja,Loja,2021-11-13,Activo
 C00853,Carlos Torres,Premium,Manta,Manabí,2021-09-04,Activo
 C00854,Miguel Torres,Masivo,Ambato,Tungurahua,2020-09-13,Activo
 C00855,Diego Pérez,Masivo,Loja,Loja,2018-02-23,Activo
-C00856,María Morales,Premium,Guayaquil,Guayas,,Activo
+C00856,María Morales,Premium,Guayaquil,Guayas,2026-06-28,Activo
 C00857,Fernando Mendoza,Masivo,Guayaquil,Guayas,2025-07-14,Activo
 C00858,María Torres,Premium,Santo Domingo,Santo Domingo de los Tsáchilas,2023-07-31,Activo
 C00859,Ana Morales,Masivo,Loja,Loja,2026-05-24,Activo
@@ -946,7 +946,7 @@ C00944,Carlos Torres,Premium,Guayaquil,Guayas,2021-08-18,Activo
 C00945,Diego Pérez,Premium,Loja,Loja,2023-08-12,Inactivo
 C00946,Miguel López,Masivo,Guayaquil,Guayas,2023-11-29,Activo
 C00947,Daniela Vera,Frecuente,Manta,Manabí,2020-04-22,Activo
-C00948,Diego López,Masivo,Santo Domingo,Santo Domingo de los Tsáchilas,,Activo
+C00948,Diego López,Masivo,Santo Domingo,Santo Domingo de los Tsáchilas,2025-07-23,Activo
 C00949,Carlos Vera,Masivo,Machala,El Oro,2019-06-12,Activo
 C00950,Paola García,Masivo,Guayaquil,Guayas,2023-01-03,Activo
 C00951,Paola Vera,Masivo,Quito,Pichincha,2019-01-10,Activo
@@ -976,7 +976,7 @@ C00974,María Torres,Masivo,Machala,El Oro,2022-09-16,Activo
 C00975,Luis García,Premium,quito,El Oro,2025-03-23,Inactivo
 C00976,Paola Pérez,Frecuente,Ambato,Tungurahua,2025-01-20,Activo
 C00977,Luis Castro,Premium,Ambato,Tungurahua,2025-03-04,Activo
-C00978,Daniela Paredes,Masivo,Machala,El Oro,,Activo
+C00978,Daniela Paredes,Masivo,Machala,El Oro,2023-11-14,Activo
 C00979,Sofía Morales,Masivo,Riobamba,Chimborazo,2019-04-18,Activo
 C00980,Paola López,Premium,Machala,El Oro,2025-04-29,Activo
 C00981,Jorge Mendoza,Frecuente,Riobamba,Chimborazo,2020-03-20,Activo

@@ -46,7 +46,7 @@ Mostrar `profile_report.md` y `log_rechazos.csv`.
 ### 4. Modelo dimensional (3 min)
 > "El DW está en esquema estrella: una tabla de hechos (ventas) y 4 dimensiones (tiempo, cliente, producto, sucursal). Esto permite filtrar por fecha, sucursal, categoría y segmento en segundos."
 
-### 5. Demo del dashboard — 4 KPIs (4 min)
+### 5. Demo del dashboard — indicadores, mapa-filtro y filtros cruzados (4 min)
 
 Abrir **Apache Superset** en su URL propia (puerto `8088` en local o `8008` en Northflank), iniciar sesión y abrir el dashboard `Sales Analytics`. Si Superset no estuviera disponible, usar `04_dashboard/dashboard.html` como plan B.
 
@@ -65,7 +65,7 @@ Abrir **Apache Superset** en su URL propia (puerto `8088` en local o `8008` en N
 Demostrar filtros: Fecha · Sucursal · Categoría · Segmento.
 
 ### 6. Validación y limitaciones (2 min)
-> "Validamos cuadre: el total del dashboard coincide con `fact_ventas` en PostgreSQL, con 7.452.222,71 de ingresos netos, 13.817 unidades, 1.966.780,12 de margen y 3.587 transacciones. La PoC cubre 32 meses y aún no tiene carga incremental ni gobierno de datos."
+> "Validamos cuadre: el total del dashboard coincide con `fact_ventas` en PostgreSQL, con 7.452.222,71 de ingresos netos, 13.817 unidades, 1.966.780,12 de margen y 3.587 transacciones. Además, el dashboard muestra 404.749,54 USD de descuento otorgado y 44.001,54 USD de pérdida estimada por rechazos. La PoC cubre 32 meses y aún no tiene carga incremental ni gobierno de datos."
 
 Mostrar la consulta de control:
 

@@ -1,0 +1,14 @@
+{
+  "version": 8,
+  "name": "Ecuador provinces only",
+  "sources": {},
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#eef2f9"
+      }
+    }
+  ]
+}

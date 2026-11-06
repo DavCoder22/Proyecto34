@@ -58,6 +58,38 @@ THEME_OVERRIDES = {
     },
 }
 
+def _patch_deck_polygon_filter(app):
+    """Conserva la columna de geometría en el payload de deck.gl.
+
+    deck.gl Polygon usa `line_column` tanto para dibujar el polígono como para
+    emitir el evento de filtro. El viz original elimina esa columna del
+    resultado, por lo que el filtro cruzado del dashboard recibía `undefined`.
+    Al conservarla, al hacer clic en una provincia se filtra todo el tablero
+    usando el mismo polígono (columna `geom`).
+    """
+    try:
+        from superset.viz import DeckPathViz
+    except Exception:  # pragma: no cover - depende del arranque de Superset
+        return
+    if getattr(DeckPathViz.get_properties, "_poc_patched", False):
+        return
+
+    original = DeckPathViz.get_properties
+
+    def get_properties(self, data):
+        column = self.form_data.get("line_column")
+        raw_value = data.get(column) if column else None
+        result = original(self, data)
+        if column and raw_value is not None and isinstance(result, dict):
+            result[column] = raw_value
+        return result
+
+    get_properties._poc_patched = True
+    DeckPathViz.get_properties = get_properties
+
+
+FLASK_APP_MUTATOR = _patch_deck_polygon_filter
+
 EXTRA_CATEGORICAL_COLOR_SCHEMES = [
     {
         "id": "uceColors",

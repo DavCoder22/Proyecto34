@@ -65,6 +65,24 @@ CREATE TABLE IF NOT EXISTS fact_ventas (
     metodo_pago VARCHAR(30)
 );
 
+-- HECHO DE RECHAZOS: registros que no pudieron integrarse al hecho principal.
+-- Se conservan como perdida estimada y trazabilidad de calidad.
+CREATE TABLE IF NOT EXISTS fact_rechazos (
+    id_rechazo SERIAL PRIMARY KEY,
+    id_venta VARCHAR(15),
+    fecha_venta DATE,
+    cod_cliente VARCHAR(15),
+    cod_producto VARCHAR(15),
+    cod_sucursal VARCHAR(15),
+    cantidad NUMERIC(18,6),
+    precio_unitario NUMERIC(18,6),
+    descuento_pct NUMERIC(8,6),
+    canal_venta VARCHAR(30),
+    metodo_pago VARCHAR(30),
+    motivo VARCHAR(200),
+    venta_perdida NUMERIC(18,6)
+);
+
 -- ÍNDICES PARA RENDIMIENTO
 CREATE INDEX IF NOT EXISTS idx_fact_ventas_tiempo ON fact_ventas(id_tiempo);
 CREATE INDEX IF NOT EXISTS idx_fact_ventas_cliente ON fact_ventas(id_cliente);

@@ -126,6 +126,9 @@ header#main-menu .ant-btn-text:hover { background: rgba(255, 255, 255, .14) !imp
 .dashboard-component-chart-holder .header-title { color: #0033A0 !important; font-weight: 700 !important; }
 .dashboard-component-chart-holder .slice_container { padding: 10px 14px !important; }
 .dashboard-component-chart-holder:hover { box-shadow: 0 12px 28px rgba(16, 32, 64, .14) !important; }
+/* El mapa usa un estilo propio sin basemap: ocultar el logo de Mapbox. */
+.mapboxgl-ctrl-logo,
+.mapboxgl-ctrl-attrib { display: none !important; }
 """
 
 
@@ -149,79 +152,117 @@ FORCE = os.environ.get("SUPERSET_BOOTSTRAP_FORCE", "").strip().lower() in {
 ADMIN_USERNAME = os.environ.get("SUPERSET_ADMIN_USER", "admin")
 SUM_VENTA_NETA = "SUM(venta_neta)"
 COLOR_SCHEME = "uceColors"
+# Estilo propio sin basemap: solo se dibujan las provincias con datos.
+MAP_STYLE = os.environ.get(
+    "SUPERSET_MAP_STYLE",
+    "/static/assets/ecuador-blank-style.json",
+)
+MAP_VIEWPORT = {
+    "longitude": -78.6,
+    "latitude": -1.3,
+    "zoom": 6,
+    "bearing": 0,
+    "pitch": 0,
+}
+
+# Colorea el mapa por intensidad. Sin filtro de categoria cada provincia /
+# sucursal aparece varias veces (una por categoria); en ese caso usa la venta
+# total. Con una categoria seleccionada queda una fila por provincia / sucursal
+# y se usa la venta de esa categoria.
+MAP_JS_DATA_MUTATOR = """
+function(data){
+  var cp={},cs={};
+  data.forEach(function(f){
+    var p=f.properties||{};
+    if(p.tipo==='provincia'){cp[p.provincia]=(cp[p.provincia]||0)+1;}
+    else if(p.tipo==='sucursal'){cs[p.sucursal]=(cs[p.sucursal]||0)+1;}
+  });
+  var pi=[],si=[];
+  data.forEach(function(f){
+    var p=f.properties||{};
+    if(p.tipo==='provincia'){
+      var m=cp[p.provincia]>1;
+      pi.push([f,Number(m?p.ventaTotal:p.ventaNeta)||0]);
+    }else if(p.tipo==='sucursal'){
+      var m2=cs[p.sucursal]>1;
+      si.push([f,Number(m2?p.ventaTotal:p.ventaNeta)||0]);
+    }
+  });
+  var rc={'Costa':[0,128,128,255],'Sierra':[120,72,20,255],
+          'Amazonía':[0,140,60,255],'Amazonia':[0,140,60,255],
+          'Oriente':[0,140,60,255]};
+  function apply(items,lo,hi){
+    var vals=items.map(function(x){return x[1];}).sort(function(a,b){return a-b;});
+    var mn=vals.length?vals[0]:0,mx=vals.length?vals[vals.length-1]:0;
+    items.forEach(function(x){
+      var t=mx>mn?(x[1]-mn)/(mx-mn):0.5;
+      var p=x[0].properties||{};
+      p.fillColor=[
+        Math.round(lo[0]+(hi[0]-lo[0])*t),
+        Math.round(lo[1]+(hi[1]-lo[1])*t),
+        Math.round(lo[2]+(hi[2]-lo[2])*t),
+        215
+      ];
+      if(rc[p.region]){p.strokeColor=rc[p.region];}
+    });
+  }
+  apply(pi,[201,220,255],[0,51,160]);
+  apply(si,[255,205,210],[206,17,38]);
+  return data;
+}
+"""
+
+MAP_LEGEND_MARKDOWN = """
+**Leyenda del mapa**
+
+- **Relleno (intensidad):** azul claro = menor venta; azul oscuro = mayor venta. Al seleccionar una categoría en el pastel, la intensidad corresponde a esa categoría.
+- **Borde de la provincia (región):** turquesa = Costa; café = Sierra; verde = Amazonía.
+- **Puntos rojos:** sucursales. Clic en un punto para filtrar todo el dashboard por esa sucursal; clic en una provincia para filtrar por provincia.
+"""
 
 DATASETS = {
-    "v_ventas_mes": {
+    # Vista unica a nivel de detalle: todos los cortes comparten dimensiones,
+    # por lo que el cross-filtering funciona entre graficos.
+    "v_ventas_detalle": {
         "main_dttm_col": "fecha",
-        "metrics": [("sum_venta_neta", SUM_VENTA_NETA)],
-    },
-    "v_ventas_categoria": {
-        "metrics": [("sum_venta_neta", SUM_VENTA_NETA)],
-    },
-    "v_ventas_sucursal": {
-        "metrics": [("sum_venta_neta", SUM_VENTA_NETA)],
-    },
-    "v_ventas_segmento": {
-        "metrics": [("sum_venta_neta", SUM_VENTA_NETA)],
-    },
-    "v_ventas_provincia": {
-        "metrics": [("sum_venta_neta", SUM_VENTA_NETA)],
-    },
-    "v_kpis_consolidados": {
         "metrics": [
-            ("kpi_ingresos", "MAX(ingresos)"),
-            ("kpi_unidades", "MAX(unidades)"),
-            ("kpi_margen", "MAX(margen)"),
-            ("kpi_transacciones", "MAX(transacciones)"),
-            ("kpi_ticket_promedio", "MAX(ticket_promedio)"),
-            ("kpi_margen_pct", "MAX(margen_pct)"),
+            ("sum_venta_neta", "SUM(venta_neta)"),
+            ("sum_unidades", "SUM(cantidad)"),
+            ("sum_margen", "SUM(margen)"),
+            ("sum_descuento", "SUM(descuento_usd)"),
+            ("count_ventas", "COUNT(DISTINCT id_venta)"),
+            ("ticket_promedio", "SUM(venta_neta) / NULLIF(COUNT(DISTINCT id_venta), 0)"),
+            ("margen_pct", "SUM(margen) / NULLIF(SUM(venta_neta), 0)"),
+            ("kpi_ingresos", "SUM(venta_neta)"),
+            ("kpi_unidades", "SUM(cantidad)"),
+            ("kpi_margen", "SUM(margen)"),
+            ("kpi_descuento", "SUM(descuento_usd)"),
+            ("kpi_transacciones", "COUNT(DISTINCT id_venta)"),
+            ("kpi_ticket_promedio", "SUM(venta_neta) / NULLIF(COUNT(DISTINCT id_venta), 0)"),
+            ("kpi_margen_pct", "SUM(margen) / NULLIF(SUM(venta_neta), 0)"),
         ],
     },
+    # Hecho de rechazos: perdidas estimadas por sucursal, fecha y motivo.
+    "v_rechazos": {
+        "main_dttm_col": "fecha_venta",
+        "metrics": [
+            ("sum_perdida", "SUM(venta_perdida)"),
+            ("count_rechazos", "COUNT(*)"),
+            ("kpi_perdida", "SUM(venta_perdida)"),
+        ],
+    },
+    "v_mapa_consolidado": {},
 }
 
 KPI_CARDS = [
-    (
-        "Ingresos Netos",
-        "kpi_ingresos",
-        "$,.2f",
-        "USD · universo validado",
-        "CHART-KPI-INGRESOS",
-    ),
-    (
-        "Unidades Vendidas",
-        "kpi_unidades",
-        ",.0f",
-        "unidades · datos integrados",
-        "CHART-KPI-UNIDADES",
-    ),
-    (
-        "Margen Bruto",
-        "kpi_margen",
-        "$,.2f",
-        "rentabilidad absoluta",
-        "CHART-KPI-MARGEN",
-    ),
-    (
-        "Transacciones",
-        "kpi_transacciones",
-        ",.0f",
-        "ventas únicas",
-        "CHART-KPI-TRANSACCIONES",
-    ),
-    (
-        "Ticket Promedio",
-        "kpi_ticket_promedio",
-        "$,.2f",
-        "USD por transacción",
-        "CHART-KPI-TICKET",
-    ),
-    (
-        "Margen %",
-        "kpi_margen_pct",
-        ".2%",
-        "margen sobre ingresos netos",
-        "CHART-KPI-MARGEN-PCT",
-    ),
+    ("Ingresos Netos", "v_ventas_detalle", "kpi_ingresos", "$,.2f", "USD · ventas válidas", "CHART-KPI-INGRESOS"),
+    ("Unidades Vendidas", "v_ventas_detalle", "kpi_unidades", ",.0f", "unidades integradas", "CHART-KPI-UNIDADES"),
+    ("Margen Bruto", "v_ventas_detalle", "kpi_margen", "$,.2f", "USD · rentabilidad", "CHART-KPI-MARGEN"),
+    ("Descuento Otorgado", "v_ventas_detalle", "kpi_descuento", "$,.2f", "USD · descuentos aplicados", "CHART-KPI-DESCUENTO"),
+    ("Transacciones", "v_ventas_detalle", "kpi_transacciones", ",.0f", "ventas únicas", "CHART-KPI-TRANSACCIONES"),
+    ("Ticket Promedio", "v_ventas_detalle", "kpi_ticket_promedio", "$,.2f", "USD por transacción", "CHART-KPI-TICKET"),
+    ("Margen %", "v_ventas_detalle", "kpi_margen_pct", ".2%", "sobre ingresos netos", "CHART-KPI-MARGEN-PCT"),
+    ("Pérdida por Rechazos", "v_rechazos", "kpi_perdida", "$,.2f", "USD · no integrado", "CHART-KPI-PERDIDA"),
 ]
 
 
@@ -395,6 +436,13 @@ def _get_dataset(database, schema, view):
     table.filter_select_enabled = True
     table.fetch_metadata()
 
+    for column in table.columns:
+        if column.column_name == "geom":
+            column.verbose_name = "Provincia"
+            column.description = "Geometría de la provincia para filtrar el mapa"
+        elif column.column_name == "provincia":
+            column.verbose_name = "Provincia (nombre)"
+
     spec = DATASETS[view]
     if spec.get("main_dttm_col"):
         table.main_dttm_col = spec["main_dttm_col"]
@@ -402,17 +450,20 @@ def _get_dataset(database, schema, view):
             if column.column_name == spec["main_dttm_col"]:
                 column.is_dttm = True
 
-    existing_metrics = {metric.metric_name for metric in table.metrics}
-    for metric_name, expression in spec["metrics"]:
-        if metric_name not in existing_metrics:
+    existing_metrics = {metric.metric_name: metric for metric in table.metrics}
+    for metric_name, expression in spec.get("metrics", []):
+        metric = existing_metrics.get(metric_name)
+        if metric is None:
             table.metrics.append(
                 SqlMetric(metric_name=metric_name, expression=expression)
             )
+        elif metric.expression != expression:
+            metric.expression = expression
     db.session.commit()
     return table
 
 
-def _line_params(table):
+def _line_params(table, dttm="fecha", metric="sum_venta_neta", y_label="Ventas netas (USD)"):
     return {
         "adhoc_filters": [],
         "annotation_layers": [],
@@ -421,11 +472,11 @@ def _line_params(table):
         "comparison_type": "values",
         "contribution": False,
         "datasource": f"{table.id}__table",
-        "granularity_sqla": "fecha",
+        "granularity_sqla": dttm,
         "groupby": [],
         "left_margin": "auto",
         "line_interpolation": "linear",
-        "metrics": ["sum_venta_neta"],
+        "metrics": [metric],
         "order_desc": True,
         "rich_tooltip": True,
         "rolling_type": "None",
@@ -440,11 +491,11 @@ def _line_params(table):
         "x_axis_format": "smart_date",
         "x_axis_label": "Fecha",
         "y_axis_format": "SMART_NUMBER",
-        "y_axis_label": "Ventas netas (USD)",
+        "y_axis_label": y_label,
     }
 
 
-def _bar_params(table, groupby, x_label):
+def _bar_params(table, groupby, x_label, metric="sum_venta_neta", y_label="Ventas netas (USD)", row_limit=100):
     return {
         "adhoc_filters": [],
         "annotation_layers": [],
@@ -456,17 +507,42 @@ def _bar_params(table, groupby, x_label):
         "granularity_sqla": None,
         "groupby": [groupby],
         "left_margin": "auto",
-        "metrics": ["sum_venta_neta"],
+        "metrics": [metric],
         "order_desc": True,
-        "row_limit": 100,
+        "row_limit": row_limit,
         "show_legend": True,
         "time_range": "No filter",
         "url_params": {},
         "viz_type": "dist_bar",
         "x_axis_label": x_label,
         "y_axis_format": "SMART_NUMBER",
-        "y_axis_label": "Ventas netas (USD)",
+        "y_axis_label": y_label,
     }
+
+
+def _table_params(table, groupby, metrics, row_limit=50, order_metric=None):
+    params = {
+        "adhoc_filters": [],
+        "all_columns": [],
+        "color_pn": True,
+        "datasource": f"{table.id}__table",
+        "granularity_sqla": None,
+        "groupby": groupby,
+        "include_search": True,
+        "metrics": metrics,
+        "order_desc": True,
+        "page_length": 20,
+        "query_mode": "aggregate",
+        "row_limit": row_limit,
+        "show_cell_bars": True,
+        "table_filter": False,
+        "time_range": "No filter",
+        "url_params": {},
+        "viz_type": "table",
+    }
+    if order_metric:
+        params["timeseries_limit_metric"] = order_metric
+    return params
 
 
 def _pie_params(table, groupby):
@@ -493,6 +569,40 @@ def _pie_params(table, groupby):
         "time_range": "No filter",
         "url_params": {},
         "viz_type": "pie",
+    }
+
+
+def _geojson_map_params(table):
+    return {
+        "adhoc_filters": [],
+        "autozoom": False,
+        "datasource": f"{table.id}__table",
+        "extruded": False,
+        "fill_color_picker": {"r": 0, "g": 0, "b": 0, "a": 0},
+        "filled": True,
+        "filter_nulls": True,
+        "geojson": "geojson",
+        "js_data_mutator": MAP_JS_DATA_MUTATOR,
+        # geo_key lleva el prefijo "provincia:" o "sucursal:" para que el clic
+        # emita el filtro correcto (provincia o nombre de sucursal).
+        "line_column": "geo_key",
+        "line_width": 1.5,
+        "line_width_unit": "pixels",
+        "mapbox_style": MAP_STYLE,
+        # Puntos de sucursal seleccionables sin tapar el poligono provincial.
+        "point_unit": "pixels",
+        "point_radius_fixed": {"type": "fix", "value": 7},
+        "point_radius_scale": 100,
+        "point_radius_min_pixels": 4,
+        "point_radius_max_pixels": 9,
+        "row_limit": 100,
+        "stroke_color_picker": {"r": 255, "g": 255, "b": 255, "a": 0},
+        "stroked": True,
+        "table_filter": True,
+        "time_range": "No filter",
+        "url_params": {},
+        "viewport": dict(MAP_VIEWPORT),
+        "viz_type": "deck_geojson",
     }
 
 
@@ -554,8 +664,15 @@ def _chart_component(component_id, slice_obj, row_id, width, height=50):
     }
 
 
-def _create_dashboard(kpi_slices, chart_slices, admin, dashboard=None):
-    line_slice, category_slice, branch_slice, segment_slice, map_slice, pie_slice = chart_slices
+def _create_dashboard(kpi_slices, chart_slices, tables, admin, dashboard=None):
+    (
+        line_slice,
+        category_slice,
+        branch_slice,
+        segment_slice,
+        map_slice,
+        pie_slice,
+    ) = chart_slices
     kpi_components = [
         _chart_component(component_id, slice_obj, "ROW-KPI-1" if index < 3 else "ROW-KPI-2", 4, 28)
         for index, (slice_obj, component_id) in enumerate(kpi_slices)
@@ -568,7 +685,13 @@ def _create_dashboard(kpi_slices, chart_slices, admin, dashboard=None):
             "type": "ROOT",
         },
         "GRID_ID": {
-            "children": ["ROW-KPI-1", "ROW-KPI-2", "ROW-LINE", "ROW-MAP", "ROW-BARS"],
+            "children": [
+                "ROW-KPI-1",
+                "ROW-KPI-2",
+                "ROW-LINE",
+                "ROW-MAP",
+                "ROW-BARS",
+            ],
             "id": "GRID_ID",
             "parents": ["ROOT_ID"],
             "type": "GRID",
@@ -592,6 +715,15 @@ def _create_dashboard(kpi_slices, chart_slices, admin, dashboard=None):
             "parents": ["ROOT_ID", "GRID_ID"],
             "type": "ROW",
         },
+        "ROW-MAP": {
+            "children": ["CHART-MAP", "CHART-PIE"],
+            "id": "ROW-MAP",
+            "meta": {"background": "BACKGROUND_TRANSPARENT"},
+            "parents": ["ROOT_ID", "GRID_ID"],
+            "type": "ROW",
+        },
+        "CHART-MAP": _chart_component("CHART-MAP", map_slice, "ROW-MAP", 8, 100),
+        "CHART-PIE": _chart_component("CHART-PIE", pie_slice, "ROW-MAP", 4, 100),
         "ROW-LINE": {
             "children": ["CHART-LINE"],
             "id": "ROW-LINE",
@@ -600,35 +732,43 @@ def _create_dashboard(kpi_slices, chart_slices, admin, dashboard=None):
             "type": "ROW",
         },
         "CHART-LINE": _chart_component("CHART-LINE", line_slice, "ROW-LINE", 12),
-        "ROW-MAP": {
-            "children": ["CHART-MAP", "CHART-PIE"],
-            "id": "ROW-MAP",
+        "ROW-BRANCH": {
+            "children": ["CHART-BRANCH"],
+            "id": "ROW-BRANCH",
             "meta": {"background": "BACKGROUND_TRANSPARENT"},
             "parents": ["ROOT_ID", "GRID_ID"],
             "type": "ROW",
         },
-        "CHART-MAP": _chart_component("CHART-MAP", map_slice, "ROW-MAP", 7, 90),
-        "CHART-PIE": _chart_component("CHART-PIE", pie_slice, "ROW-MAP", 5, 90),
-        "ROW-BARS": {
-            "children": ["CHART-CATEGORY", "CHART-BRANCH", "CHART-SEGMENT"],
-            "id": "ROW-BARS",
+        "CHART-BRANCH": _chart_component("CHART-BRANCH", branch_slice, "ROW-BRANCH", 12),
+        "ROW-SEG-CAT": {
+            "children": ["CHART-SEGMENT", "CHART-CATEGORY"],
+            "id": "ROW-SEG-CAT",
             "meta": {"background": "BACKGROUND_TRANSPARENT"},
             "parents": ["ROOT_ID", "GRID_ID"],
             "type": "ROW",
         },
-        "CHART-CATEGORY": _chart_component(
-            "CHART-CATEGORY", category_slice, "ROW-BARS", 4
-        ),
-        "CHART-BRANCH": _chart_component(
-            "CHART-BRANCH", branch_slice, "ROW-BARS", 4
-        ),
-        "CHART-SEGMENT": _chart_component(
-            "CHART-SEGMENT", segment_slice, "ROW-BARS", 4
-        ),
+        "CHART-SEGMENT": _chart_component("CHART-SEGMENT", segment_slice, "ROW-SEG-CAT", 6),
+        "CHART-CATEGORY": _chart_component("CHART-CATEGORY", category_slice, "ROW-SEG-CAT", 6),
     }
     for component in kpi_components:
         position[component["id"]] = component
 
+    all_slices = [slice_obj for slice_obj, _ in kpi_slices] + list(chart_slices)
+    all_slice_ids = [slice_obj.id for slice_obj in all_slices]
+    cross_filter_scope = {"rootPath": ["ROOT_ID"], "excluded": []}
+    province_targets = [
+        {"datasetId": table.id, "column": {"name": "provincia"}}
+        for table in (
+            tables["v_ventas_mes"],
+            tables["v_ventas_categoria"],
+            tables["v_ventas_sucursal"],
+            tables["v_ventas_segmento"],
+            tables["v_ventas_provincia"],
+            tables["v_sucursales_mapa"],
+            tables["v_mapa_consolidado"],
+            tables["v_kpis_consolidados"],
+        )
+    ]
     metadata = {
         "timed_refresh_immune_slices": [],
         "expanded_slices": {},
@@ -636,7 +776,49 @@ def _create_dashboard(kpi_slices, chart_slices, admin, dashboard=None):
         "default_filters": "{}",
         "color_scheme": COLOR_SCHEME,
         "label_colors": {},
-        "native_filter_configuration": [],
+        "native_filter_configuration": [
+            {
+                "cascadeParentIds": [],
+                "chartsInScope": all_slice_ids,
+                "controlValues": {
+                    "enableEmptyFilter": False,
+                    "defaultToFirstItem": False,
+                    "inverseSelection": False,
+                    "multiSelect": False,
+                    "searchAllOptions": False,
+                    "sortAscending": True,
+                    "sortMetric": None,
+                },
+                "defaultValue": None,
+                "description": "Filtra todos los gráficos por provincia del cliente.",
+                "filterType": "filter_select",
+                "id": "NATIVE_FILTER-provincia",
+                "name": "Provincia",
+                "scope": cross_filter_scope,
+                "tabsInScope": [],
+                "targets": province_targets,
+                "type": "NATIVE_FILTER",
+            }
+        ],
+        "cross_filters_enabled": True,
+        "chart_configuration": {
+            str(slice_id): {
+                "id": slice_id,
+                "crossFilters": {
+                    "scope": cross_filter_scope,
+                    "chartsInScope": [
+                        other
+                        for other in all_slice_ids
+                        if other != slice_id
+                    ],
+                },
+            }
+            for slice_id in all_slice_ids
+        },
+        "global_chart_configuration": {
+            "scope": cross_filter_scope,
+            "chartsInScope": all_slice_ids,
+        },
     }
     if dashboard is None:
         dashboard = Dashboard(
@@ -654,6 +836,231 @@ def _create_dashboard(kpi_slices, chart_slices, admin, dashboard=None):
     dashboard.slices = [
         slice_obj for slice_obj, _ in kpi_slices
     ] + list(chart_slices)
+    if admin is not None:
+        dashboard.owners = [admin]
+    db.session.commit()
+    return dashboard
+
+
+def _native_filter(filter_id, name, rows, all_slice_ids):
+    return {
+        "cascadeParentIds": [],
+        "chartsInScope": all_slice_ids,
+        "controlValues": {
+            "enableEmptyFilter": False,
+            "defaultToFirstItem": False,
+            "inverseSelection": False,
+            "multiSelect": False,
+            "searchAllOptions": True,
+            "sortAscending": True,
+            "sortMetric": None,
+        },
+        "defaultValue": None,
+        "description": f"Filtra el dashboard por {name.lower()}.",
+        "filterType": "filter_select",
+        "id": f"NATIVE_FILTER-{filter_id}",
+        "name": name,
+        "scope": {"rootPath": ["ROOT_ID"], "excluded": []},
+        "tabsInScope": [],
+        "targets": [
+            {"datasetId": table.id, "column": {"name": column}}
+            for table, column in rows
+        ],
+        "type": "NATIVE_FILTER",
+    }
+
+
+def _build_dashboard(kpi_slices, layout, tables, admin, dashboard=None):
+    kpi_components = []
+    for index, (slice_obj, component_id) in enumerate(kpi_slices):
+        row_id = "ROW-KPI-1" if index < 4 else "ROW-KPI-2"
+        kpi_components.append(_chart_component(component_id, slice_obj, row_id, 3, 30))
+
+    chart_components = []
+    row_children = {"ROW-KPI-1": [], "ROW-KPI-2": []}
+    for row_id, charts in layout:
+        row_children.setdefault(row_id, [])
+        for component_id, slice_obj, width, height in charts:
+            component = _chart_component(component_id, slice_obj, row_id, width, height)
+            chart_components.append(component)
+            row_children[row_id].append(component_id)
+    row_children["ROW-KPI-1"] = [c["id"] for c in kpi_components[:4]]
+    row_children["ROW-KPI-2"] = [c["id"] for c in kpi_components[4:]]
+
+    rows_order = ["ROW-KPI-1", "ROW-KPI-2"]
+    for row_id, _ in layout:
+        rows_order.append(row_id)
+        if row_id == "ROW-MAP":
+            rows_order.append("ROW-LEGEND")
+    row_children["ROW-LEGEND"] = ["MARKDOWN-LEGEND"]
+    position = {
+        "DASHBOARD_VERSION_KEY": "v2",
+        "ROOT_ID": {"children": ["GRID_ID"], "id": "ROOT_ID", "type": "ROOT"},
+        "GRID_ID": {
+            "children": rows_order,
+            "id": "GRID_ID",
+            "parents": ["ROOT_ID"],
+            "type": "GRID",
+        },
+        "HEADER_ID": {
+            "id": "HEADER_ID",
+            "meta": {"text": DASHBOARD_TITLE},
+            "type": "HEADER",
+        },
+    }
+    for row_id in rows_order:
+        position[row_id] = {
+            "children": row_children.get(row_id, []),
+            "id": row_id,
+            "meta": {"background": "BACKGROUND_TRANSPARENT"},
+            "parents": ["ROOT_ID", "GRID_ID"],
+            "type": "ROW",
+        }
+    for component in kpi_components + chart_components:
+        position[component["id"]] = component
+    position["MARKDOWN-LEGEND"] = {
+        "children": [],
+        "id": "MARKDOWN-LEGEND",
+        "meta": {"code": MAP_LEGEND_MARKDOWN, "height": 18, "width": 12},
+        "parents": ["ROOT_ID", "GRID_ID", "ROW-LEGEND"],
+        "type": "MARKDOWN",
+    }
+
+    slice_by_component = {}
+    for slice_obj, component_id in kpi_slices:
+        slice_by_component[component_id] = slice_obj.id
+    for _, charts in layout:
+        for component_id, slice_obj, _, _ in charts:
+            slice_by_component[component_id] = slice_obj.id
+    component_by_slice = {sid: comp for comp, sid in slice_by_component.items()}
+    all_slice_ids = list(slice_by_component.values())
+
+    loss_components = {
+        comp for comp in slice_by_component
+        if comp.startswith("CHART-LOSS") or comp == "CHART-KPI-PERDIDA"
+    }
+    sales_ids = [
+        sid for comp, sid in slice_by_component.items()
+        if comp not in loss_components
+    ]
+    loss_ids = [
+        sid for comp, sid in slice_by_component.items() if comp in loss_components
+    ]
+    map_id = slice_by_component.get("CHART-MAP")
+    scope_all_sales = sales_ids + ([map_id] if map_id else [])
+
+    def excluded_for(slice_id):
+        """Graficos que NO deben recibir el filtro de este grafico.
+
+        El frontend recalcula chartsInScope a partir de scope.excluded, por lo
+        que aqui se excluyen los datasets que no tienen la columna emitida.
+        """
+        comp = component_by_slice.get(slice_id)
+        excluded = {slice_id}
+        if comp == "CHART-MAP":
+            # Emite provincia o nombre_sucursal; ambos existen en ventas y rechazos.
+            return sorted(excluded)
+        if comp in loss_components:
+            # Rechazos: no mezclar con ventas (columnas y fecha distintas).
+            excluded.update(sales_ids)
+            if map_id:
+                excluded.add(map_id)
+            return sorted(excluded)
+        # Graficos de ventas: no enviar a rechazos.
+        excluded.update(loss_ids)
+        if comp in {
+            "CHART-PIE", "CHART-CATEGORY", "CHART-DISCOUNT",
+            "CHART-TOP-CATEGORIA", "CHART-REGION",
+            "CHART-BRANCH", "CHART-TOP-SUCURSAL",
+        }:
+            # El mapa tiene categoria, region y nombre_sucursal.
+            pass
+        elif map_id:
+            # line (fecha), segmento, marca o canal no existen en el mapa.
+            excluded.add(map_id)
+        return sorted(excluded)
+
+    det = tables["v_ventas_detalle"]
+    mp = tables["v_mapa_consolidado"]
+    rec = tables["v_rechazos"]
+    native_filters = [
+        _native_filter(
+            "provincia", "Provincia",
+            [(det, "provincia"), (mp, "provincia"), (rec, "provincia")],
+            all_slice_ids,
+        ),
+        _native_filter(
+            "categoria", "Categoría",
+            [(det, "categoria"), (mp, "categoria"), (rec, "categoria")],
+            all_slice_ids,
+        ),
+        _native_filter(
+            "sucursal", "Sucursal",
+            [(det, "nombre_sucursal"), (rec, "nombre_sucursal")],
+            all_slice_ids,
+        ),
+        _native_filter(
+            "marca", "Marca",
+            [(det, "marca"), (rec, "marca")],
+            all_slice_ids,
+        ),
+        _native_filter(
+            "region", "Región",
+            [(det, "region"), (mp, "region"), (rec, "region")],
+            all_slice_ids,
+        ),
+    ]
+
+    cross_filter_scope = {"rootPath": ["ROOT_ID"], "excluded": []}
+    metadata = {
+        "timed_refresh_immune_slices": [],
+        "expanded_slices": {},
+        "refresh_frequency": 0,
+        "default_filters": "{}",
+        "color_scheme": COLOR_SCHEME,
+        "label_colors": {},
+        "native_filter_configuration": native_filters,
+        "cross_filters_enabled": True,
+        "chart_configuration": {
+            str(slice_id): {
+                "id": slice_id,
+                "crossFilters": {
+                    "scope": {
+                        "rootPath": ["ROOT_ID"],
+                        "excluded": excluded_for(slice_id),
+                    },
+                    "chartsInScope": [
+                        other for other in all_slice_ids
+                        if other not in excluded_for(slice_id)
+                    ],
+                },
+            }
+            for slice_id in all_slice_ids
+        },
+        "global_chart_configuration": {
+            "scope": cross_filter_scope,
+            "chartsInScope": all_slice_ids,
+        },
+    }
+
+    if dashboard is None:
+        dashboard = Dashboard(
+            dashboard_title=DASHBOARD_TITLE,
+            slug=DASHBOARD_SLUG,
+        )
+        db.session.add(dashboard)
+
+    dashboard.dashboard_title = DASHBOARD_TITLE
+    dashboard.slug = DASHBOARD_SLUG
+    dashboard.position_json = json.dumps(position, indent=4)
+    dashboard.json_metadata = json.dumps(metadata)
+    dashboard.css = DASHBOARD_CSS
+    dashboard.published = True
+    dashboard.slices = [
+        slice_obj for slice_obj, _ in kpi_slices
+    ] + [
+        slice_obj for _, charts in layout for _, slice_obj, _, _ in charts
+    ]
     if admin is not None:
         dashboard.owners = [admin]
     db.session.commit()
@@ -691,71 +1098,178 @@ def main():
         }
 
         kpi_slices = []
-        for title, metric, number_format, subheader, component_id in KPI_CARDS:
+        for title, table_key, metric, number_format, subheader, component_id in KPI_CARDS:
+            table = tables[table_key]
             slice_obj = _get_slice(
                 title,
-                tables["v_kpis_consolidados"],
+                table,
                 "big_number_total",
-                _big_number_params(
-                    tables["v_kpis_consolidados"],
-                    metric,
-                    subheader,
-                    number_format,
-                ),
+                _big_number_params(table, metric, subheader, number_format),
                 admin,
             )
             kpi_slices.append((slice_obj, component_id))
 
+        det = tables["v_ventas_detalle"]
+        rec = tables["v_rechazos"]
+
+        map_slice = _get_slice(
+            "Mapa de Ventas y Sucursales",
+            tables["v_mapa_consolidado"],
+            "deck_geojson",
+            _geojson_map_params(tables["v_mapa_consolidado"]),
+            admin,
+        )
+        pie = _get_slice(
+            "Participación por Categoría",
+            det,
+            "pie",
+            _pie_params(det, "categoria"),
+            admin,
+        )
         line = _get_slice(
             "Evolución de Ventas",
-            tables["v_ventas_mes"],
+            det,
             "line",
-            _line_params(tables["v_ventas_mes"]),
+            _line_params(det),
             admin,
         )
         category = _get_slice(
             "Ventas por Categoría",
-            tables["v_ventas_categoria"],
+            det,
             "dist_bar",
-            _bar_params(tables["v_ventas_categoria"], "categoria", "Categoría"),
+            _bar_params(det, "categoria", "Categoría"),
             admin,
         )
         branch = _get_slice(
             "Desempeño por Sucursal",
-            tables["v_ventas_sucursal"],
+            det,
             "dist_bar",
-            _bar_params(tables["v_ventas_sucursal"], "nombre_sucursal", "Sucursal"),
+            _bar_params(det, "nombre_sucursal", "Sucursal"),
             admin,
         )
         segment = _get_slice(
             "Ventas por Segmento",
-            tables["v_ventas_segmento"],
+            det,
             "dist_bar",
-            _bar_params(tables["v_ventas_segmento"], "segmento", "Segmento"),
+            _bar_params(det, "segmento", "Segmento"),
             admin,
         )
-        province_chart = _get_slice(
-            "Ventas por Provincia",
-            tables["v_ventas_provincia"],
+        region = _get_slice(
+            "Ventas por Región",
+            det,
             "dist_bar",
-            _bar_params(tables["v_ventas_provincia"], "provincia", "Provincia"),
+            _bar_params(det, "region", "Región"),
             admin,
         )
-        participation = _get_slice(
-            "Participación por Categoría",
-            tables["v_ventas_categoria"],
-            "pie",
-            _pie_params(tables["v_ventas_categoria"], "categoria"),
+        channel = _get_slice(
+            "Ventas por Canal",
+            det,
+            "dist_bar",
+            _bar_params(det, "canal_venta", "Canal"),
+            admin,
+        )
+        brand = _get_slice(
+            "Ventas por Marca",
+            det,
+            "dist_bar",
+            _bar_params(det, "marca", "Marca", row_limit=15),
+            admin,
+        )
+        discount = _get_slice(
+            "Descuento por Categoría",
+            det,
+            "dist_bar",
+            _bar_params(
+                det, "categoria", "Categoría",
+                metric="sum_descuento", y_label="Descuento (USD)",
+            ),
+            admin,
+        )
+        top_marca = _get_slice(
+            "Marca Más Vendida",
+            det,
+            "table",
+            _table_params(
+                det, ["marca"], ["sum_venta_neta", "sum_unidades"],
+                row_limit=1, order_metric="sum_venta_neta",
+            ),
+            admin,
+        )
+        top_categoria = _get_slice(
+            "Categoría Más Vendida",
+            det,
+            "table",
+            _table_params(
+                det, ["categoria"], ["sum_venta_neta", "sum_unidades"],
+                row_limit=1, order_metric="sum_venta_neta",
+            ),
+            admin,
+        )
+        top_sucursal = _get_slice(
+            "Sucursal con Más Ventas",
+            det,
+            "table",
+            _table_params(
+                det, ["nombre_sucursal"], ["sum_venta_neta", "sum_unidades"],
+                row_limit=1, order_metric="sum_venta_neta",
+            ),
+            admin,
+        )
+        loss_branch = _get_slice(
+            "Pérdidas por Sucursal",
+            rec,
+            "dist_bar",
+            _bar_params(
+                rec, "nombre_sucursal", "Sucursal",
+                metric="sum_perdida", y_label="Pérdida estimada (USD)",
+            ),
+            admin,
+        )
+        loss_date = _get_slice(
+            "Pérdidas por Fecha",
+            rec,
+            "line",
+            _line_params(
+                rec, dttm="fecha_venta",
+                metric="sum_perdida", y_label="Pérdida estimada (USD)",
+            ),
             admin,
         )
         db.session.commit()
 
-        _create_dashboard(
-            kpi_slices,
-            [line, category, branch, segment, province_chart, participation],
-            admin,
-            dashboard=existing,
-        )
+        layout = [
+            ("ROW-MAP", [
+                ("CHART-MAP", map_slice, 8, 100),
+                ("CHART-PIE", pie, 4, 100),
+            ]),
+            ("ROW-LINE", [
+                ("CHART-LINE", line, 12, 55),
+            ]),
+            ("ROW-BARS-1", [
+                ("CHART-CATEGORY", category, 6, 60),
+                ("CHART-BRANCH", branch, 6, 60),
+            ]),
+            ("ROW-BARS-2", [
+                ("CHART-SEGMENT", segment, 4, 60),
+                ("CHART-BRAND", brand, 4, 60),
+                ("CHART-DISCOUNT", discount, 4, 60),
+            ]),
+            ("ROW-REGION", [
+                ("CHART-REGION", region, 6, 55),
+                ("CHART-CHANNEL", channel, 6, 55),
+            ]),
+            ("ROW-TOP", [
+                ("CHART-TOP-MARCA", top_marca, 4, 45),
+                ("CHART-TOP-CATEGORIA", top_categoria, 4, 45),
+                ("CHART-TOP-SUCURSAL", top_sucursal, 4, 45),
+            ]),
+            ("ROW-LOSS-1", [
+                ("CHART-LOSS-BRANCH", loss_branch, 6, 70),
+                ("CHART-LOSS-DATE", loss_date, 6, 70),
+            ]),
+        ]
+
+        _build_dashboard(kpi_slices, layout, tables, admin, dashboard=existing)
         print("[bootstrap] Dashboard Sales Analytics creado/actualizado correctamente.")
 
 

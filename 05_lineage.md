@@ -12,6 +12,17 @@ sucursales.csv -> stg_sucursales -> DimSucursal -> FactVentas -> v_ventas_sucurs
 ## KPI 4: Ventas por segmento
 clientes.csv -> stg_clientes -> clean (segmento homologado) -> DimCliente -> FactVentas -> v_ventas_segmento -> dona + ticket promedio
 
+## KPI 5: Marca mas vendida
+productos.xlsx -> stg_productos -> clean_productos (marca homologada) -> DimProducto -> FactVentas (cantidad, venta_neta) -> v_ventas_marca / v_top_marca_provincia / v_top_marca_sucursal -> ranking de marcas y tarjeta "Marca mas vendida"
+
+## KPI 6: Productos con mayor descuento
+ventas_sucursales.csv -> stg_ventas -> clean_ventas (descuento validado) -> FactVentas (descuento_pct, venta_bruta, venta_neta) -> v_descuento_producto / v_top_descuento_provincia / v_top_descuento_sucursal -> barras de descuento promedio y monto descontado
+
+## KPI 7: Lideres por provincia y sucursal
+DimCliente (provincia) / DimSucursal -> FactVentas -> DimProducto (categoria, producto, marca) -> v_top_categoria_* / v_top_producto_* / v_top_marca_* / v_top_descuento_* -> tabla territorial del dashboard
+
+Los rankings de "mas vendido" usan `SUM(cantidad)` como metrica principal y `SUM(venta_neta)` como criterio de desempate. El mayor descuento usa `AVG(descuento_pct)` con un minimo de 5 unidades para evitar conclusiones sobre productos con una sola venta.
+
 ## Cuadre de exactitud
 Total venta_neta dashboard = SUM(FactVentas.venta_neta) = 7,452,222.71
 Control vs fuente: aplicar las mismas reglas (venta_neta = cantidad*precio*(1-descuento)) sobre stg_ventas y comparar totales.

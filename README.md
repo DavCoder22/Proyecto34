@@ -151,7 +151,7 @@ En local, el servicio `jupyter` usa `ETL_TARGET=sqlite` y escribe solo `03_dw/dw
 
 ### Opción B: Desplegar en Northflank (Neon + job ETL + Superset)
 
-> Para ver en la nube **el dashboard HTML idéntico al local** (mapa fijo, provincias clicables, sin zoom ni Mapbox), sigue [`deploy/NORTHFLANK_DASHBOARD.md`](deploy/NORTHFLANK_DASHBOARD.md). Superset es el dashboard alternativo con tarjetas y gráficos; su mapa deck.gl requiere un token de Mapbox y es interactivo.
+> Para ver en la nube **el dashboard HTML idéntico al local** (mapa fijo, provincias clicables, sin zoom ni Mapbox), sigue [`deploy/NORTHFLANK_DASHBOARD.md`](deploy/NORTHFLANK_DASHBOARD.md). Superset es el dashboard alternativo con tarjetas y gráficos; su mapa deck.gl usa un estilo gratuito de Carto (sin token de Mapbox) y las provincias seleccionadas filtran todos los gráficos.
 
 1. Ir a [northflank.com](https://northflank.com) → proyecto `proyecto34`.
 2. Conectar el repositorio `https://github.com/DavCoder22/Proyecto34.git`.
@@ -238,7 +238,7 @@ Desde la raíz del proyecto, ejecutar `python 02_etl/main.py` (o `run_etl.bat` e
 
 El notebook `02_etl/01_etl_pipeline.ipynb` ejecuta el mismo pipeline y muestra los cuatro indicadores: ingresos, unidades, margen bruto y transacciones.
 
-Para generar una visualización local sin configurar un servidor, ejecutar `python 04_dashboard/build_dashboard.py` y abrir `04_dashboard/dashboard.html`. El HTML contiene seis tarjetas de indicadores (ingresos, unidades, margen, transacciones, ticket promedio y margen %), un **mapa coroplético de las 24 provincias** del Ecuador para filtrar la vista con un clic, ranking provincial, participación porcentual en pastel (categoría, canal, método de pago o segmento), top de productos, desempeño por sucursal y ventas por segmento. También acepta `dashboard.html?provincia=Pichincha` para abrir una provincia preseleccionada. El dashboard de Superset incluye un ranking provincial (`v_ventas_provincia`) y el pastel de participación; su mapa deck.gl requiere Mapbox y es interactivo. Para el mapa fijo con provincias clicables, usa el dashboard HTML (`docker/Dockerfile.dashboard`), que se ve igual que en local. Para una demo interactiva, usar Superset conectado a PostgreSQL (ver [`deploy/SUPERSET_DEPLOY.md`](deploy/SUPERSET_DEPLOY.md)) o Power BI con `03_dw/dw.db`.
+Para generar una visualización local sin configurar un servidor, ejecutar `python 04_dashboard/build_dashboard.py` y abrir `04_dashboard/dashboard.html`. El HTML contiene seis tarjetas de indicadores (ingresos, unidades, margen, transacciones, ticket promedio y margen %), cuatro tarjetas de líderes (marca, producto, categoría y mayor descuento), un **mapa coroplético de las 24 provincias** del Ecuador para filtrar la vista con un clic, ranking provincial, participación porcentual en pastel (categoría, canal, método de pago o segmento), top de productos, marcas más vendidas, productos con mayor descuento, una tabla de líderes por provincia y sucursal (categoría, producto, marca y descuento), desempeño por sucursal y ventas por segmento. También acepta `dashboard.html?provincia=Pichincha` para abrir una provincia preseleccionada. El dashboard de Superset incluye un único mapa interactivo que combina las provincias con datos (colores escalonados) y las sucursales (puntos), el pastel de participación y un filtro de provincia; al hacer clic en una provincia se filtran todas las gráficas y el mapa no permite zoom. Usa un estilo gratuito de Carto, por lo que no necesita token de Mapbox. Para el mapa fijo sin zoom, usa el dashboard HTML (`docker/Dockerfile.dashboard`), que se ve igual que en local. Para una demo interactiva, usar Superset conectado a PostgreSQL (ver [`deploy/SUPERSET_DEPLOY.md`](deploy/SUPERSET_DEPLOY.md)) o Power BI con `03_dw/dw.db`.
 
 ---
 
@@ -271,6 +271,11 @@ Para generar una visualización local sin configurar un servidor, ejecutar `pyth
 | Ventas por Categoría | Participación por categoría | Priorizar inventario/productos |
 | Desempeño por Sucursal | Ranking + ticket promedio | Evaluar gestión comercial |
 | Ventas por Segmento | Contribución por segmento | Dirigir campañas y fidelización |
+| Marcas más Vendidas | Ranking por unidades y venta neta | Negociar con proveedores y surtido |
+| Productos con Mayor Descuento | Promedio % y monto descontado | Controlar erosión de margen |
+| Líderes por Provincia y Sucursal | Categoría, producto, marca y descuento líder | Ajustar surtido y promociones por territorio |
+
+Vistas SQL asociadas: `v_ventas_marca`, `v_descuento_producto`, `v_top_marca_provincia`, `v_top_marca_sucursal`, `v_top_producto_provincia`, `v_top_producto_sucursal`, `v_top_categoria_provincia`, `v_top_categoria_sucursal`, `v_top_descuento_provincia` y `v_top_descuento_sucursal`.
 
 **Identidad visual:** tema institucional UCE (azul cobalto y rojo escarlata), logo propio y paleta `uceColors` en todos los gráficos.
 
